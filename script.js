@@ -36,6 +36,8 @@ const jumpBtn = document.getElementById("jump-btn");
 const jumpTotalInput = document.getElementById("jump-total");
 const jumpTotalBtn = document.getElementById("jump-total-btn");
 const resetBtn = document.getElementById("reset-btn");
+const cableSizes = Array.from(fiberCountSelect.options).map(option => parseInt(option.value));
+const tubeSizes = Array.from(tubeSizeSelect.options).map(option => parseInt(option.value));
 
 const defaultState = {
   fiberCount: fiberCountSelect.value,
@@ -80,6 +82,34 @@ function loadState() {
 
 function updateInfoBar(message = "Tap a fiber") {
   infoBar.textContent = message;
+}
+
+function findSmallestSizeAtLeast(sizes, minimum) {
+  return sizes.find(size => size >= minimum) ?? null;
+}
+
+function syncTubeSizeOptions(totalFibers, preferredTubeSize = tubeSizeSelect.value) {
+  const options = Array.from(tubeSizeSelect.options);
+  let fallbackValue = options[0].value;
+
+  options.forEach(option => {
+    const optionValue = parseInt(option.value);
+    const isValid = optionValue <= totalFibers;
+
+    option.disabled = !isValid;
+    option.hidden = !isValid;
+
+    if (isValid) {
+      fallbackValue = option.value;
+    }
+  });
+
+  const preferredOption = options.find(option =>
+    option.value === String(preferredTubeSize) && !option.disabled
+  );
+
+  tubeSizeSelect.value = preferredOption ? preferredOption.value : fallbackValue;
+  fibersPerTube = parseInt(tubeSizeSelect.value);
 }
 
 function closeAllTubes() {
@@ -155,7 +185,12 @@ function renderMap(totalFibers) {
 
     let row = null;
 
-    for (let fiberIndex = 0; fiberIndex < fibersPerTube; fiberIndex++) {
+    const fibersInThisTube = Math.min(
+      fibersPerTube,
+      totalFibers - tubeIndex * fibersPerTube
+    );
+
+    for (let fiberIndex = 0; fiberIndex < fibersInThisTube; fiberIndex++) {
       if (fiberIndex % 12 === 0) {
         row = document.createElement("div");
         row.className = "fiber-row";
@@ -211,15 +246,22 @@ function restoreSavedSelection(selectedTotal) {
 }
 
 function applyState(state) {
+  const totalFibers = parseInt(state.fiberCount);
+
   fiberCountSelect.value = state.fiberCount;
-  tubeSizeSelect.value = state.tubeSize;
   jumpTubeInput.value = state.jumpTube;
   jumpFiberInput.value = state.jumpFiber;
   jumpTotalInput.value = state.jumpTotal;
 
-  fibersPerTube = parseInt(tubeSizeSelect.value);
-  renderMap(parseInt(fiberCountSelect.value));
+  syncTubeSizeOptions(totalFibers, state.tubeSize);
+  renderMap(totalFibers);
   restoreSavedSelection(state.selectedTotal);
+}
+
+function configureMap(totalFibers, preferredTubeSize) {
+  fiberCountSelect.value = String(totalFibers);
+  syncTubeSizeOptions(totalFibers, preferredTubeSize);
+  renderMap(totalFibers);
 }
 
 function resetApp() {
@@ -231,13 +273,16 @@ function resetApp() {
 applyState(loadState());
 
 fiberCountSelect.addEventListener("change", () => {
-  renderMap(parseInt(fiberCountSelect.value));
+  const totalFibers = parseInt(fiberCountSelect.value);
+
+  syncTubeSizeOptions(totalFibers);
+  renderMap(totalFibers);
   updateInfoBar();
   saveState();
 });
 
 tubeSizeSelect.addEventListener("change", () => {
-  fibersPerTube = parseInt(tubeSizeSelect.value);
+  syncTubeSizeOptions(parseInt(fiberCountSelect.value), tubeSizeSelect.value);
   renderMap(parseInt(fiberCountSelect.value));
   updateInfoBar();
   saveState();
@@ -250,12 +295,28 @@ jumpTotalInput.addEventListener("input", saveState);
 jumpBtn.addEventListener("click", () => {
   const tube = parseInt(jumpTubeInput.value);
   const fiber = parseInt(jumpFiberInput.value);
-  const tubeCount = Math.ceil(parseInt(fiberCountSelect.value) / fibersPerTube);
 
-  if (!tube || !fiber || tube < 1 || tube > tubeCount || fiber < 1 || fiber > fibersPerTube) {
-    alert(`Enter a tube between 1 and ${tubeCount} and a fiber between 1 and ${fibersPerTube}`);
+  if (!tube || !fiber || tube < 1 || fiber < 1) {
+    alert("Enter a valid tube number and fiber number.");
     return;
   }
+
+  const nextTubeSize = findSmallestSizeAtLeast(tubeSizes, fiber);
+
+  if (!nextTubeSize) {
+    alert("That fiber number is larger than the available tube sizes.");
+    return;
+  }
+
+  const requiredTotal = (tube - 1) * nextTubeSize + fiber;
+  const nextCableSize = findSmallestSizeAtLeast(cableSizes, requiredTotal);
+
+  if (!nextCableSize) {
+    alert("That tube and fiber combination is larger than the available cable sizes.");
+    return;
+  }
+
+  configureMap(nextCableSize, nextTubeSize);
 
   const target = document.querySelector(
     `.fiber[data-tube="${tube}"][data-fiber="${fiber}"]`
@@ -272,20 +333,22 @@ jumpBtn.addEventListener("click", () => {
 
 jumpTotalBtn.addEventListener("click", () => {
   const total = parseInt(jumpTotalInput.value);
-  const maxFibers = parseInt(fiberCountSelect.value);
+  const nextCableSize = findSmallestSizeAtLeast(cableSizes, total);
 
-  if (!total || total < 1 || total > maxFibers) {
-    alert(`Enter a number between 1 and ${maxFibers}`);
+  if (!total || total < 1) {
+    alert("Enter a valid total fiber number.");
     return;
   }
 
+  if (!nextCableSize) {
+    alert("That total fiber number is larger than the available cable sizes.");
+    return;
+  }
+
+  configureMap(nextCableSize, 12);
+
   const tube = Math.ceil(total / fibersPerTube);
   const fiber = ((total - 1) % fibersPerTube) + 1;
-
-  document.querySelectorAll(".fiber").forEach(f =>
-    f.classList.remove("active")
-  );
-
   const target = document.querySelector(
     `.fiber[data-tube="${tube}"][data-fiber="${fiber}"]`
   );

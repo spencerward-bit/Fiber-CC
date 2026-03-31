@@ -1,4 +1,4 @@
-const tubeSizeSelect = document.getElementById("tube-size");
+﻿const tubeSizeSelect = document.getElementById("tube-size");
 let fibersPerTube = parseInt(tubeSizeSelect.value);
 
 const tubeColors = [
@@ -24,6 +24,8 @@ const fiberColorMap = {
   Aqua: "#00B3B8"
 };
 
+const darkColors = new Set(["Blue", "Brown", "Slate", "Red", "Black", "Violet"]);
+
 const map = document.getElementById("fiber-map");
 const infoBar = document.getElementById("info-bar");
 const fiberCountSelect = document.getElementById("fiber-count");
@@ -39,6 +41,32 @@ function closeAllTubes() {
   );
 }
 
+function clearActiveFibers() {
+  document.querySelectorAll(".fiber").forEach(fiber =>
+    fiber.classList.remove("active")
+  );
+}
+
+function selectFiber(target) {
+  if (!target) {
+    return null;
+  }
+
+  const tubeDiv = target.closest(".tube");
+  const tube = target.dataset.tube;
+  const fiber = target.dataset.fiber;
+  const total = target.dataset.total;
+
+  clearActiveFibers();
+  closeAllTubes();
+  tubeDiv.classList.add("open");
+  target.classList.add("active");
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+
+  infoBar.textContent = `Total Fiber ${total} - Tube ${tube}, Fiber ${fiber}`;
+  return target;
+}
+
 function renderMap(totalFibers) {
   map.innerHTML = "";
 
@@ -46,13 +74,17 @@ function renderMap(totalFibers) {
 
   for (let tubeIndex = 0; tubeIndex < tubeCount; tubeIndex++) {
     const tubeColor = tubeColors[tubeIndex % tubeColors.length];
+    const tubeTextColor = darkColors.has(tubeColor) ? "#FFFFFF" : "#111111";
 
     const tubeDiv = document.createElement("div");
     tubeDiv.className = "tube";
+    tubeDiv.style.borderColor = fiberColorMap[tubeColor];
 
     const title = document.createElement("div");
     title.className = "tube-title";
-    title.textContent = `Tube ${tubeIndex + 1} – ${tubeColor}`;
+    title.style.background = fiberColorMap[tubeColor];
+    title.style.color = tubeTextColor;
+    title.textContent = `Tube ${tubeIndex + 1} - ${tubeColor}`;
 
     // Tube hash marks
     const tubeNumber = tubeIndex + 1;
@@ -100,7 +132,7 @@ function renderMap(totalFibers) {
         tubeDiv.classList.add("open");
         fiber.classList.add("active");
         infoBar.textContent =
-          `Total Fiber ${fiber.dataset.total} — Tube ${tubeIndex + 1}, Fiber ${fiberIndex + 1}`;
+          `Total Fiber ${fiber.dataset.total} - Tube ${tubeIndex + 1}, Fiber ${fiberIndex + 1}`;
       };
 
       row.appendChild(fiber);
@@ -159,5 +191,6 @@ jumpTotalBtn.addEventListener("click", () => {
   });
 
   infoBar.textContent =
-    `Total Fiber ${total} — Tube ${tube}, Fiber ${fiber}`;
+    `Total Fiber ${total} - Tube ${tube}, Fiber ${fiber}`;
 });
+

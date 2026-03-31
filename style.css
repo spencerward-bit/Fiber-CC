@@ -16,6 +16,21 @@ header {
   border-bottom: 1px solid #222;
 }
 
+header h1 {
+  margin: 0 0 10px;
+}
+
+header label {
+  display: inline-block;
+  margin: 0 8px 0 0;
+  font-weight: 600;
+}
+
+header select {
+  margin-right: 14px;
+  padding: 6px 8px;
+}
+
 /* ===== Controls ===== */
 select,
 input,
@@ -99,12 +114,18 @@ button {
 /* ===== Fiber Row ===== */
 .fiber-row {
   display: none;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  justify-content: center;
   gap: 10px;
+  margin-bottom: 10px;
 }
 
 .tube.open .fiber-row {
   display: flex;
+}
+
+.tube.open .fiber-row:last-child {
+  margin-bottom: 0;
 }
 
 /* ===== Fiber Dots ===== */
@@ -208,6 +229,55 @@ button {
 .fiber.color-violet.hash-2::after,
 .fiber.color-violet.hash-2::before {
   background: #fff;
+}
+
+@media (max-width: 768px) {
+  header label,
+  header select {
+    display: block;
+    width: 100%;
+    margin-right: 0;
+  }
+
+  header label {
+    margin: 0 0 6px;
+  }
+
+  header select {
+    margin-bottom: 10px;
+    box-sizing: border-box;
+  }
+
+  header select:last-child {
+    margin-bottom: 0;
+  }
+
+  .fiber-row {
+    gap: 6px;
+  }
+
+  .fiber {
+    width: 24px;
+    height: 24px;
+    border-width: 2px;
+    font-size: 10px;
+    padding-bottom: 3px;
+  }
+
+  .fiber.hash-1::after {
+    height: 1.5px;
+    bottom: 4px;
+  }
+
+  .fiber.hash-2::after {
+    height: 1.5px;
+    bottom: 5px;
+  }
+
+  .fiber.hash-2::before {
+    height: 1.5px;
+    bottom: 2px;
+  }
 }
 
 /* ===== Info Bar ===== */

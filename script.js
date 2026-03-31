@@ -100,10 +100,17 @@ function renderMap(totalFibers) {
       if (!isOpen) tubeDiv.classList.add("open");
     };
 
-    const row = document.createElement("div");
-    row.className = "fiber-row";
+    tubeDiv.appendChild(title);
+
+    let row = null;
 
     for (let fiberIndex = 0; fiberIndex < fibersPerTube; fiberIndex++) {
+      if (fiberIndex % 12 === 0) {
+        row = document.createElement("div");
+        row.className = "fiber-row";
+        tubeDiv.appendChild(row);
+      }
+
       const fiberColor = fiberColors[fiberIndex % fiberColors.length];
 
       const fiber = document.createElement("div");
@@ -138,8 +145,6 @@ function renderMap(totalFibers) {
       row.appendChild(fiber);
     }
 
-    tubeDiv.appendChild(title);
-    tubeDiv.appendChild(row);
     map.appendChild(tubeDiv);
   }
 }

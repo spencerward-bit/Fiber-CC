@@ -1,0 +1,217 @@
+/* ===== Base Layout ===== */
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #111;
+  color: #fff;
+}
+
+/* ===== Header ===== */
+header {
+  position: sticky;
+  top: 0;
+  background: #000;
+  z-index: 10;
+  padding: 10px;
+  border-bottom: 1px solid #222;
+}
+
+/* ===== Controls ===== */
+select,
+input,
+button {
+  font-size: 16px;
+}
+
+#quick-jump,
+#total-jump {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+}
+
+#quick-jump input,
+#total-jump input {
+  width: 90px;
+  padding: 6px;
+  text-align: center;
+}
+
+button {
+  padding: 6px 12px;
+  font-weight: bold;
+  background: #00e5ff;
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* ===== Tube Container ===== */
+.tube {
+  padding: 12px;
+  border-bottom: 1px solid #333;
+}
+
+/* ===== Tube Title (Accordion Tab) ===== */
+.tube-title {
+  position: relative;
+  background: #111;
+  padding: 6px 0;
+  margin-bottom: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Accordion arrow */
+.tube-title::after {
+  content: "▸";
+  float: right;
+  transition: transform 0.2s ease;
+}
+
+.tube.open .tube-title::after {
+  transform: rotate(90deg);
+}
+
+/* ===== Tube Hash Marks ===== */
+.tube-title.hash-1::before {
+  content: " ′";
+  margin-left: 6px;
+  font-weight: bold;
+}
+
+.tube-title.hash-2::before {
+  content: " ″";
+  margin-left: 6px;
+  font-weight: bold;
+}
+
+/* ===== Fiber Row ===== */
+.fiber-row {
+  display: none;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tube.open .fiber-row {
+  display: flex;
+}
+
+/* ===== Fiber Dots ===== */
+.fiber {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid #444;
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 14px;
+  font-weight: bold;
+  user-select: none;
+
+  /* Raises number so hash marks fit below */
+  padding-bottom: 5px;
+
+  color: #000;
+}
+
+/* ===== White numbers on DARK fiber colors ===== */
+.fiber.color-blue,
+.fiber.color-brown,
+.fiber.color-slate,
+.fiber.color-red,
+.fiber.color-black,
+.fiber.color-violet {
+  color: #fff;
+}
+
+/* ===== Active Fiber Highlight ===== */
+.fiber.active {
+  border-color: #00e5ff;
+  box-shadow:
+    0 0 0 3px rgba(0, 229, 255, 0.5),
+    0 0 10px rgba(0, 229, 255, 0.8);
+}
+
+/* ===== Fiber Hash Marks (BELOW numbers, inside circle) ===== */
+.fiber.hash-1::after {
+  content: "";
+  position: absolute;
+  width: 60%;
+  height: 2px;
+  left: 20%;
+  bottom: 6px;
+}
+
+.fiber.hash-2::after {
+  content: "";
+  position: absolute;
+  width: 60%;
+  height: 2px;
+  left: 20%;
+  bottom: 8px;
+}
+
+.fiber.hash-2::before {
+  content: "";
+  position: absolute;
+  width: 60%;
+  height: 2px;
+  left: 20%;
+  bottom: 4px;
+}
+
+/* Default hash color */
+.fiber.hash-1::after,
+.fiber.hash-2::after,
+.fiber.hash-2::before {
+  background: #000;
+}
+
+/* White hash marks on DARK fiber colors */
+.fiber.color-blue.hash-1::after,
+.fiber.color-blue.hash-2::after,
+.fiber.color-blue.hash-2::before,
+
+.fiber.color-brown.hash-1::after,
+.fiber.color-brown.hash-2::after,
+.fiber.color-brown.hash-2::before,
+
+.fiber.color-slate.hash-1::after,
+.fiber.color-slate.hash-2::after,
+.fiber.color-slate.hash-2::before,
+
+.fiber.color-red.hash-1::after,
+.fiber.color-red.hash-2::after,
+.fiber.color-red.hash-2::before,
+
+.fiber.color-black.hash-1::after,
+.fiber.color-black.hash-2::after,
+.fiber.color-black.hash-2::before,
+
+.fiber.color-violet.hash-1::after,
+.fiber.color-violet.hash-2::after,
+.fiber.color-violet.hash-2::before {
+  background: #fff;
+}
+
+/* ===== Info Bar ===== */
+#info-bar {
+  position: sticky;
+  bottom: 0;
+  background: #000;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  border-top: 2px solid #222;
+  z-index: 10;
+}

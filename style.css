@@ -41,6 +41,7 @@ button {
 #quick-jump,
 #total-jump {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
   align-items: center;

@@ -25,6 +25,7 @@ const fiberColorMap = {
 };
 
 const darkColors = new Set(["Blue", "Brown", "Slate", "Red", "Black", "Violet"]);
+const STORAGE_KEY = "fiberColorMapState";
 
 const map = document.getElementById("fiber-map");
 const infoBar = document.getElementById("info-bar");
@@ -34,6 +35,52 @@ const jumpFiberInput = document.getElementById("jump-fiber");
 const jumpBtn = document.getElementById("jump-btn");
 const jumpTotalInput = document.getElementById("jump-total");
 const jumpTotalBtn = document.getElementById("jump-total-btn");
+const resetBtn = document.getElementById("reset-btn");
+
+const defaultState = {
+  fiberCount: fiberCountSelect.value,
+  tubeSize: tubeSizeSelect.value,
+  jumpTube: "",
+  jumpFiber: "",
+  jumpTotal: "",
+  selectedTotal: null
+};
+
+function getCurrentState() {
+  const activeFiber = document.querySelector(".fiber.active");
+
+  return {
+    fiberCount: fiberCountSelect.value,
+    tubeSize: tubeSizeSelect.value,
+    jumpTube: jumpTubeInput.value,
+    jumpFiber: jumpFiberInput.value,
+    jumpTotal: jumpTotalInput.value,
+    selectedTotal: activeFiber ? activeFiber.dataset.total : null
+  };
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(getCurrentState()));
+}
+
+function loadState() {
+  const savedState = localStorage.getItem(STORAGE_KEY);
+
+  if (!savedState) {
+    return { ...defaultState };
+  }
+
+  try {
+    return { ...defaultState, ...JSON.parse(savedState) };
+  } catch (error) {
+    localStorage.removeItem(STORAGE_KEY);
+    return { ...defaultState };
+  }
+}
+
+function updateInfoBar(message = "Tap a fiber") {
+  infoBar.textContent = message;
+}
 
 function closeAllTubes() {
   document.querySelectorAll(".tube.open").forEach(tube =>
@@ -62,8 +109,12 @@ function selectFiber(target) {
   tubeDiv.classList.add("open");
   target.classList.add("active");
   target.scrollIntoView({ behavior: "smooth", block: "center" });
+  jumpTubeInput.value = tube;
+  jumpFiberInput.value = fiber;
+  jumpTotalInput.value = total;
 
-  infoBar.textContent = `Total Fiber ${total} - Tube ${tube}, Fiber ${fiber}`;
+  updateInfoBar(`Total Fiber ${total} - Tube ${tube}, Fiber ${fiber}`);
+  saveState();
   return target;
 }
 
@@ -132,14 +183,7 @@ function renderMap(totalFibers) {
       }
 
       fiber.onclick = () => {
-        document.querySelectorAll(".fiber").forEach(f =>
-          f.classList.remove("active")
-        );
-        closeAllTubes();
-        tubeDiv.classList.add("open");
-        fiber.classList.add("active");
-        infoBar.textContent =
-          `Total Fiber ${fiber.dataset.total} - Tube ${tubeIndex + 1}, Fiber ${fiberIndex + 1}`;
+        selectFiber(fiber);
       };
 
       row.appendChild(fiber);
@@ -149,16 +193,81 @@ function renderMap(totalFibers) {
   }
 }
 
-// Initial load
-renderMap(parseInt(fiberCountSelect.value));
+function restoreSavedSelection(selectedTotal) {
+  if (!selectedTotal) {
+    updateInfoBar();
+    return;
+  }
+
+  const target = document.querySelector(`.fiber[data-total="${selectedTotal}"]`);
+
+  if (!target) {
+    updateInfoBar();
+    saveState();
+    return;
+  }
+
+  selectFiber(target);
+}
+
+function applyState(state) {
+  fiberCountSelect.value = state.fiberCount;
+  tubeSizeSelect.value = state.tubeSize;
+  jumpTubeInput.value = state.jumpTube;
+  jumpFiberInput.value = state.jumpFiber;
+  jumpTotalInput.value = state.jumpTotal;
+
+  fibersPerTube = parseInt(tubeSizeSelect.value);
+  renderMap(parseInt(fiberCountSelect.value));
+  restoreSavedSelection(state.selectedTotal);
+}
+
+function resetApp() {
+  localStorage.removeItem(STORAGE_KEY);
+  applyState(defaultState);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+applyState(loadState());
 
 fiberCountSelect.addEventListener("change", () => {
   renderMap(parseInt(fiberCountSelect.value));
+  updateInfoBar();
+  saveState();
 });
 
 tubeSizeSelect.addEventListener("change", () => {
   fibersPerTube = parseInt(tubeSizeSelect.value);
   renderMap(parseInt(fiberCountSelect.value));
+  updateInfoBar();
+  saveState();
+});
+
+jumpTubeInput.addEventListener("input", saveState);
+jumpFiberInput.addEventListener("input", saveState);
+jumpTotalInput.addEventListener("input", saveState);
+
+jumpBtn.addEventListener("click", () => {
+  const tube = parseInt(jumpTubeInput.value);
+  const fiber = parseInt(jumpFiberInput.value);
+  const tubeCount = Math.ceil(parseInt(fiberCountSelect.value) / fibersPerTube);
+
+  if (!tube || !fiber || tube < 1 || tube > tubeCount || fiber < 1 || fiber > fibersPerTube) {
+    alert(`Enter a tube between 1 and ${tubeCount} and a fiber between 1 and ${fibersPerTube}`);
+    return;
+  }
+
+  const target = document.querySelector(
+    `.fiber[data-tube="${tube}"][data-fiber="${fiber}"]`
+  );
+
+  if (!target) {
+    alert("That fiber does not exist");
+    return;
+  }
+
+  jumpTotalInput.value = target.dataset.total;
+  selectFiber(target);
 });
 
 jumpTotalBtn.addEventListener("click", () => {
@@ -186,16 +295,8 @@ jumpTotalBtn.addEventListener("click", () => {
     return;
   }
 
-  const tubeDiv = target.closest(".tube");
-  closeAllTubes();
-  tubeDiv.classList.add("open");
-
-  requestAnimationFrame(() => {
-    target.classList.add("active");
-    target.scrollIntoView({ behavior: "smooth", block: "center" });
-  });
-
-  infoBar.textContent =
-    `Total Fiber ${total} - Tube ${tube}, Fiber ${fiber}`;
+  selectFiber(target);
 });
+
+resetBtn.addEventListener("click", resetApp);
 

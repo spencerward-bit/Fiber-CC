@@ -232,6 +232,18 @@ button {
   background: #fff;
 }
 
+.fiber.roman-marker::after {
+  content: attr(data-row-marker);
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  transform: translateX(-50%);
+  font-size: 7px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.2px;
+}
+
 @media (max-width: 768px) {
   header label,
   header select {
@@ -278,6 +290,11 @@ button {
   .fiber.hash-2::before {
     height: 1.5px;
     bottom: 2px;
+  }
+
+  .fiber.roman-marker::after {
+    font-size: 5px;
+    bottom: 1px;
   }
 }
 

@@ -88,6 +88,36 @@ function findSmallestSizeAtLeast(sizes, minimum) {
   return sizes.find(size => size >= minimum) ?? null;
 }
 
+function toRomanNumeral(value) {
+  const numerals = [
+    [1000, "M"],
+    [900, "CM"],
+    [500, "D"],
+    [400, "CD"],
+    [100, "C"],
+    [90, "XC"],
+    [50, "L"],
+    [40, "XL"],
+    [10, "X"],
+    [9, "IX"],
+    [5, "V"],
+    [4, "IV"],
+    [1, "I"]
+  ];
+
+  let remaining = value;
+  let result = "";
+
+  numerals.forEach(([amount, numeral]) => {
+    while (remaining >= amount) {
+      result += numeral;
+      remaining -= amount;
+    }
+  });
+
+  return result;
+}
+
 function syncTubeSizeOptions(totalFibers, preferredTubeSize = tubeSizeSelect.value) {
   const options = Array.from(tubeSizeSelect.options);
   let fallbackValue = options[0].value;
@@ -213,8 +243,12 @@ function renderMap(totalFibers) {
       const fiberNumberInTube = fiberIndex + 1;
       if (fiberNumberInTube > 12 && fiberNumberInTube <= 24) {
         fiber.classList.add("hash-1");
-      } else if (fiberNumberInTube > 24) {
+      } else if (fiberNumberInTube > 24 && fiberNumberInTube <= 36) {
         fiber.classList.add("hash-2");
+      } else if (fiberNumberInTube > 36) {
+        const rowNumber = Math.ceil(fiberNumberInTube / 12);
+        fiber.classList.add("roman-marker");
+        fiber.dataset.rowMarker = toRomanNumeral(rowNumber);
       }
 
       fiber.onclick = () => {

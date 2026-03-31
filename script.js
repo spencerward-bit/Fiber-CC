@@ -368,6 +368,7 @@ jumpBtn.addEventListener("click", () => {
 jumpTotalBtn.addEventListener("click", () => {
   const total = parseInt(jumpTotalInput.value);
   const nextCableSize = findSmallestSizeAtLeast(cableSizes, total);
+  const selectedTubeSize = parseInt(tubeSizeSelect.value);
 
   if (!total || total < 1) {
     alert("Enter a valid total fiber number.");
@@ -379,7 +380,8 @@ jumpTotalBtn.addEventListener("click", () => {
     return;
   }
 
-  configureMap(nextCableSize, 12);
+  const preferredTubeSize = selectedTubeSize || 12;
+  configureMap(nextCableSize, preferredTubeSize);
 
   const tube = Math.ceil(total / fibersPerTube);
   const fiber = ((total - 1) % fibersPerTube) + 1;

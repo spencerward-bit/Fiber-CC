@@ -77,13 +77,39 @@
 </section>
 
 <section class="page" id="page-3">
-  <div class="hero-card">
-    <p class="hero-eyebrow">Coming Next</p>
-    <h2>Twisted Pair Color Code</h2>
-    <p>
-      This page is reserved for twisted pair color code references and tools.
-    </p>
+  <div class="tool-panel">
+    <label for="pair-count">Total Pairs</label>
+    <select id="pair-count">
+      <option value="25">25 Pair</option>
+      <option value="50">50 Pair</option>
+      <option value="100">100 Pair</option>
+      <option value="200">200 Pair</option>
+      <option value="300">300 Pair</option>
+      <option value="400">400 Pair</option>
+      <option value="600">600 Pair</option>
+    </select>
   </div>
+
+  <div id="pair-jump">
+    <label for="jump-binder">Binder</label>
+    <input type="number" id="jump-binder" min="1">
+
+    <label for="jump-pair">Pair</label>
+    <input type="number" id="jump-pair" min="1" max="25">
+
+    <button id="jump-pair-btn">Jump</button>
+  </div>
+
+  <div id="pair-total-jump">
+    <label for="jump-total-pair">Total Pair</label>
+    <input type="number" id="jump-total-pair" placeholder="Total Pair #">
+    <button id="jump-total-pair-btn">Jump</button>
+    <button id="reset-pair-btn" type="button">Reset</button>
+  </div>
+
+  <main id="pair-map" aria-live="polite"></main>
+
+  <div id="pair-info-bar">Tap a pair</div>
 </section>
 
 <nav class="bottom-tabs" aria-label="Primary">

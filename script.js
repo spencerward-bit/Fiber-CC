@@ -36,10 +36,22 @@ const jumpBtn = document.getElementById("jump-btn");
 const jumpTotalInput = document.getElementById("jump-total");
 const jumpTotalBtn = document.getElementById("jump-total-btn");
 const resetBtn = document.getElementById("reset-btn");
+const pageTitle = document.getElementById("page-title");
+const pageKicker = document.getElementById("page-kicker");
+const pages = Array.from(document.querySelectorAll(".page"));
+const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
 const cableSizes = Array.from(fiberCountSelect.options).map(option => parseInt(option.value));
 const tubeSizes = Array.from(tubeSizeSelect.options).map(option => parseInt(option.value));
+const pageOrder = [
+  { id: "page-1", title: "Color Optics" },
+  { id: "page-2", title: "Fiber Color Code" },
+  { id: "page-3", title: "Twisted Pair Color Code" }
+];
+
+let currentPageId = "page-1";
 
 const defaultState = {
+  currentPage: "page-1",
   fiberCount: fiberCountSelect.value,
   tubeSize: tubeSizeSelect.value,
   jumpTube: "",
@@ -52,6 +64,7 @@ function getCurrentState() {
   const activeFiber = document.querySelector(".fiber.active");
 
   return {
+    currentPage: currentPageId,
     fiberCount: fiberCountSelect.value,
     tubeSize: tubeSizeSelect.value,
     jumpTube: jumpTubeInput.value,
@@ -82,6 +95,27 @@ function loadState() {
 
 function updateInfoBar(message = "Tap a fiber") {
   infoBar.textContent = message;
+}
+
+function setCurrentPage(pageId, shouldSave = true) {
+  const activePage = pageOrder.find(page => page.id === pageId) ?? pageOrder[0];
+  currentPageId = activePage.id;
+
+  pages.forEach(page => {
+    page.classList.toggle("active", page.id === activePage.id);
+  });
+
+  tabButtons.forEach(button => {
+    button.classList.toggle("active", button.dataset.pageTarget === activePage.id);
+  });
+
+  pageTitle.textContent = activePage.title;
+  pageKicker.textContent = `Page ${pageOrder.findIndex(page => page.id === activePage.id) + 1} of ${pageOrder.length}`;
+  document.title = activePage.title;
+
+  if (shouldSave) {
+    saveState();
+  }
 }
 
 function findSmallestSizeAtLeast(sizes, minimum) {
@@ -282,6 +316,7 @@ function restoreSavedSelection(selectedTotal) {
 function applyState(state) {
   const totalFibers = parseInt(state.fiberCount);
 
+  setCurrentPage(state.currentPage, false);
   fiberCountSelect.value = state.fiberCount;
   jumpTubeInput.value = state.jumpTube;
   jumpFiberInput.value = state.jumpFiber;
@@ -305,6 +340,12 @@ function resetApp() {
 }
 
 applyState(loadState());
+
+tabButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    setCurrentPage(button.dataset.pageTarget);
+  });
+});
 
 fiberCountSelect.addEventListener("change", () => {
   const totalFibers = parseInt(fiberCountSelect.value);

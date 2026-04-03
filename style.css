@@ -524,8 +524,8 @@ button {
 
 .pair-grid {
   display: none;
-  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .binder.open .pair-grid {
@@ -534,9 +534,9 @@ button {
 
 .pair-card {
   position: relative;
-  min-height: 168px;
-  border-radius: 18px;
-  padding: 14px 10px 12px;
+  min-height: 132px;
+  border-radius: 14px;
+  padding: 10px 6px 8px;
   border: 1px solid #25313a;
   background: linear-gradient(180deg, rgba(19, 24, 28, 0.96), rgba(10, 14, 18, 0.94));
   cursor: pointer;
@@ -557,10 +557,10 @@ button {
 .pair-number {
   position: absolute;
   left: 50%;
-  top: 64px;
+  top: 48px;
   transform: translateX(-50%);
   z-index: 2;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 800;
   color: #ffffff;
   text-shadow:
@@ -576,32 +576,32 @@ button {
   justify-content: center;
   align-items: flex-start;
   gap: 0;
-  min-height: 124px;
+  min-height: 92px;
 }
 
 .pair-wire {
   position: relative;
-  width: 28px;
-  height: 118px;
+  width: 20px;
+  height: 86px;
   border: 2px solid rgba(0, 0, 0, 0.55);
   border-radius: 999px;
   transform-origin: center top;
 }
 
 .pair-wire.left {
-  margin-right: -9px;
+  margin-right: -6px;
   transform: rotate(24deg);
 }
 
 .pair-wire.right {
-  margin-left: -9px;
+  margin-left: -6px;
   transform: rotate(-24deg);
 }
 
 .pair-wire::before {
   content: "";
   position: absolute;
-  inset: 8px 7px;
+  inset: 6px 5px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.18);
 }
@@ -609,10 +609,10 @@ button {
 .pair-wire::after {
   content: "";
   position: absolute;
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   left: 50%;
-  bottom: -6px;
+  bottom: -4px;
   transform: translateX(-50%);
   border-radius: 50%;
   border: 2px solid rgba(0, 0, 0, 0.6);
@@ -622,7 +622,7 @@ button {
 .wire-label {
   position: absolute;
   top: -2px;
-  font-size: 11px;
+  font-size: 8px;
   font-weight: 800;
   color: #fff;
   text-shadow:
@@ -641,16 +641,16 @@ button {
 }
 
 .pair-meta {
-  margin-top: 8px;
+  margin-top: 4px;
   text-align: center;
-  font-size: 11px;
-  line-height: 1.35;
+  font-size: 8px;
+  line-height: 1.2;
   color: #d5dde3;
 }
 
 .pair-meta strong {
   display: block;
-  margin-bottom: 2px;
-  font-size: 12px;
+  margin-bottom: 1px;
+  font-size: 8px;
   color: #fff;
 }

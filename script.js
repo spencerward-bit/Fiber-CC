@@ -360,7 +360,7 @@ function renderPairMap(totalPairs) {
           </span>
         </span>
         <span class="pair-meta">
-          <strong>${colors.tipLabel}</strong>
+          <strong>Tip: ${colors.tipLabel}</strong>
           Ring ${colors.ringLabel}
         </span>
       `;

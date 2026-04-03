@@ -395,6 +395,67 @@ button {
     font-size: 11px;
     padding: 10px 6px;
   }
+
+  .pair-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .pair-card {
+    min-height: 114px;
+    border-radius: 12px;
+    padding: 8px 4px 8px;
+  }
+
+  .pair-number {
+    top: 42px;
+    font-size: 12px;
+  }
+
+  .pair-wire-wrap {
+    min-height: 78px;
+  }
+
+  .pair-wire {
+    width: 16px;
+    height: 74px;
+    border-width: 1.5px;
+  }
+
+  .pair-wire.left {
+    margin-right: -5px;
+  }
+
+  .pair-wire.right {
+    margin-left: -5px;
+  }
+
+  .pair-wire::before {
+    inset: 5px 4px;
+  }
+
+  .pair-wire::after {
+    width: 10px;
+    height: 10px;
+    bottom: -4px;
+    border-width: 1.5px;
+  }
+
+  .wire-label {
+    top: -1px;
+    font-size: 7px;
+  }
+
+  .pair-meta {
+    margin-top: 4px;
+    font-size: 7px;
+    line-height: 1.25;
+  }
+
+  .pair-meta strong {
+    font-size: 7px;
+    margin-bottom: 1px;
+  }
 }
 
 /* ===== Info Bar ===== */

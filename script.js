@@ -54,6 +54,15 @@ const ethernetDistance = document.getElementById("ethernet-distance");
 const ethernetNote = document.getElementById("ethernet-note");
 const ethernetDiagramTitle = document.getElementById("ethernet-diagram-title");
 const ethernetDiagram = document.getElementById("ethernet-diagram");
+const coaxTypeSelect = document.getElementById("coax-type");
+const coaxTitle = document.getElementById("coax-title");
+const coaxSummary = document.getElementById("coax-summary");
+const coaxDataRate = document.getElementById("coax-data-rate");
+const coaxBandwidth = document.getElementById("coax-bandwidth");
+const coaxDistance = document.getElementById("coax-distance");
+const coaxNote = document.getElementById("coax-note");
+const coaxDiagramTitle = document.getElementById("coax-diagram-title");
+const coaxDiagram = document.getElementById("coax-diagram");
 const pageTitle = document.getElementById("page-title");
 const pageKicker = document.getElementById("page-kicker");
 const pages = Array.from(document.querySelectorAll(".page"));
@@ -65,7 +74,8 @@ const pageOrder = [
   { id: "page-1", title: "Color Optics" },
   { id: "page-2", title: "Fiber Color Code" },
   { id: "page-3", title: "Twisted Pair Color Code" },
-  { id: "page-4", title: "Ethernet" }
+  { id: "page-4", title: "Ethernet" },
+  { id: "page-5", title: "Coax" }
 ];
 
 const pairMajorColors = ["White", "Red", "Black", "Yellow", "Violet"];
@@ -246,6 +256,129 @@ const ethernetCatalog = {
   }
 };
 
+const coaxCatalog = {
+  rg59: {
+    title: "RG-59",
+    summary: "Smaller 75 ohm coax commonly seen in older CCTV, legacy video, and shorter low-frequency drops.",
+    dataRate: "Good for SD/HD video and short DOCSIS/video runs",
+    bandwidth: "Up to about 1 GHz",
+    distance: "Best on shorter runs, often under 225 ft",
+    note: "Use when flexibility matters more than long reach. Signal loss climbs faster than RG-6 on longer runs.",
+    diagramTitle: "75 Ohm Legacy Drop Layout",
+    impedance: "75 ohm",
+    connectors: "BNC or F-type",
+    center: "Copper-clad steel or solid copper center conductor",
+    dielectric: "Foam dielectric",
+    shield: "Single braid with foil on many builds",
+    jacket: "PVC indoor jacket"
+  },
+  rg6: {
+    title: "RG-6",
+    summary: "The most common 75 ohm residential coax for cable TV, satellite, and broadband modem drops.",
+    dataRate: "Common for DOCSIS broadband, TV, and MoCA home networking",
+    bandwidth: "Up to about 3 GHz",
+    distance: "Often 150 to 300 ft before loss becomes a bigger design concern",
+    note: "This is the usual field choice for indoor and outdoor house drops and structured residential coax runs.",
+    diagramTitle: "75 Ohm Broadband Drop Layout",
+    impedance: "75 ohm",
+    connectors: "F-type compression",
+    center: "Copper-clad steel center conductor",
+    dielectric: "Gas-injected foam dielectric",
+    shield: "Foil plus braid shield",
+    jacket: "PVC or PE jacket"
+  },
+  rg6qs: {
+    title: "RG-6 Quad Shield",
+    summary: "RG-6 with extra shielding layers for noisier environments, stronger ingress rejection, and cleaner modem/video performance.",
+    dataRate: "Broadband, satellite, TV, and MoCA in higher-noise environments",
+    bandwidth: "Up to about 3 GHz",
+    distance: "Similar to RG-6, often 150 to 300 ft depending on frequency and splitters",
+    note: "Quad shield helps when interference is a problem, but it is a little stiffer to terminate.",
+    diagramTitle: "Quad Shield 75 Ohm Layout",
+    impedance: "75 ohm",
+    connectors: "F-type compression",
+    center: "Copper-clad steel center conductor",
+    dielectric: "Gas-injected foam dielectric",
+    shield: "Dual foil plus dual braid",
+    jacket: "PVC or PE jacket"
+  },
+  rg11: {
+    title: "RG-11",
+    summary: "Larger 75 ohm coax used when lower loss is needed over longer outdoor or building-entry runs.",
+    dataRate: "Broadband, TV, and long-feed distribution where lower attenuation matters",
+    bandwidth: "Up to about 3 GHz",
+    distance: "Often chosen for 300 to 500+ ft runs before active equipment",
+    note: "Better long-run performance than RG-6, but it is bulkier and less forgiving to bend and terminate.",
+    diagramTitle: "Long-Reach 75 Ohm Layout",
+    impedance: "75 ohm",
+    connectors: "F-type or hardline transition fittings",
+    center: "Copper-clad steel or solid copper center conductor",
+    dielectric: "Foam dielectric",
+    shield: "Foil plus heavy braid",
+    jacket: "UV-rated PE or PVC jacket"
+  },
+  rg58: {
+    title: "RG-58",
+    summary: "Flexible 50 ohm coax used for legacy radio, instrumentation, and lighter-duty RF patching.",
+    dataRate: "Lower-speed RF/data links and bench or instrument connections",
+    bandwidth: "Up to about 1 GHz",
+    distance: "Usually kept short, often under 50 to 100 ft at higher frequencies",
+    note: "This is a 50 ohm cable, so it is not the same use case as CATV-style 75 ohm coax.",
+    diagramTitle: "50 Ohm Flexible RF Layout",
+    impedance: "50 ohm",
+    connectors: "BNC, PL-259, SMA, or N-type",
+    center: "Stranded or solid copper center conductor",
+    dielectric: "Solid polyethylene dielectric",
+    shield: "Single braid shield",
+    jacket: "PVC jacket"
+  },
+  rg8: {
+    title: "RG-8",
+    summary: "Larger 50 ohm coax used for radio systems and longer RF feeds than RG-58 can support comfortably.",
+    dataRate: "RF feedline for radio systems and higher-power applications",
+    bandwidth: "Up to about 2 GHz",
+    distance: "Commonly used on medium-length RF runs, often 100 to 200+ ft",
+    note: "Lower loss than RG-58, but heavier and less convenient in tight spaces.",
+    diagramTitle: "50 Ohm Medium Feedline Layout",
+    impedance: "50 ohm",
+    connectors: "PL-259, N-type, or UHF connectors",
+    center: "Stranded or solid copper center conductor",
+    dielectric: "Foam or solid dielectric",
+    shield: "Heavy braid or braid plus foil",
+    jacket: "PVC or PE jacket"
+  },
+  rg174: {
+    title: "RG-174",
+    summary: "Very small 50 ohm coax for short pigtails, compact RF devices, and tight-space internal routing.",
+    dataRate: "Short patch leads, antennas, GPS, and compact RF devices",
+    bandwidth: "Up to about 1 GHz",
+    distance: "Best on very short runs, often under 20 to 30 ft",
+    note: "Useful where size matters, but attenuation is much higher than larger coax types.",
+    diagramTitle: "Miniature 50 Ohm Pigtail Layout",
+    impedance: "50 ohm",
+    connectors: "SMA, SMB, MCX, or custom pigtails",
+    center: "Stranded center conductor",
+    dielectric: "Solid dielectric",
+    shield: "Single braid shield",
+    jacket: "Thin PVC jacket"
+  },
+  hardline500: {
+    title: "0.500 Hardline",
+    summary: "Rigid low-loss trunk or feeder coax used in outside plant, headend, and distribution systems where attenuation must stay low.",
+    dataRate: "High-capacity broadband RF distribution and plant transport",
+    bandwidth: "Up to about 1.2 GHz and beyond by system design",
+    distance: "Hundreds to thousands of feet with proper amplification design",
+    note: "This is plant cable rather than a quick patch lead. Connector prep and bonding are more specialized.",
+    diagramTitle: "Hardline Trunk Cable Layout",
+    impedance: "75 ohm",
+    connectors: "Seizure screws, hardline connectors, and taps",
+    center: "Solid copper-clad aluminum center conductor",
+    dielectric: "Air-spaced or foam dielectric",
+    shield: "Corrugated aluminum outer conductor",
+    jacket: "Flooded or UV-rated PE jacket"
+  }
+};
+
 let currentPageId = "page-1";
 
 const defaultState = {
@@ -261,7 +394,8 @@ const defaultState = {
   jumpPair: "",
   jumpTotalPair: "",
   selectedTotalPair: null,
-  ethernetCategory: ethernetCategorySelect.value
+  ethernetCategory: ethernetCategorySelect.value,
+  coaxType: coaxTypeSelect.value
 };
 
 function getCurrentState() {
@@ -281,7 +415,8 @@ function getCurrentState() {
     jumpPair: jumpPairInput.value,
     jumpTotalPair: jumpTotalPairInput.value,
     selectedTotalPair: activePair ? activePair.dataset.totalPair : null,
-    ethernetCategory: ethernetCategorySelect.value
+    ethernetCategory: ethernetCategorySelect.value,
+    coaxType: coaxTypeSelect.value
   };
 }
 
@@ -476,6 +611,47 @@ function renderEthernetDiagram(entry) {
           `).join("")}
         </div>
       </section>
+    </div>
+  `;
+}
+
+function renderCoaxDiagram(entry) {
+  coaxTitle.textContent = entry.title;
+  coaxSummary.textContent = entry.summary;
+  coaxDataRate.textContent = entry.dataRate;
+  coaxBandwidth.textContent = entry.bandwidth;
+  coaxDistance.textContent = entry.distance;
+  coaxNote.textContent = entry.note;
+  coaxDiagramTitle.textContent = entry.diagramTitle;
+
+  coaxDiagram.innerHTML = `
+    <div class="coax-stack">
+      <article class="coax-layer coax-jacket">
+        <span class="coax-layer-name">Outer Jacket</span>
+        <strong>${entry.jacket}</strong>
+      </article>
+      <article class="coax-layer coax-shield">
+        <span class="coax-layer-name">Shield</span>
+        <strong>${entry.shield}</strong>
+      </article>
+      <article class="coax-layer coax-dielectric">
+        <span class="coax-layer-name">Dielectric</span>
+        <strong>${entry.dielectric}</strong>
+      </article>
+      <article class="coax-layer coax-center">
+        <span class="coax-layer-name">Center Conductor</span>
+        <strong>${entry.center}</strong>
+      </article>
+    </div>
+    <div class="coax-meta-grid">
+      <article class="coax-meta-card">
+        <span class="coax-layer-name">Impedance</span>
+        <strong>${entry.impedance}</strong>
+      </article>
+      <article class="coax-meta-card">
+        <span class="coax-layer-name">Common Connectors</span>
+        <strong>${entry.connectors}</strong>
+      </article>
     </div>
   `;
 }
@@ -738,6 +914,7 @@ function applyState(state) {
   jumpPairInput.value = state.jumpPair;
   jumpTotalPairInput.value = state.jumpTotalPair;
   ethernetCategorySelect.value = state.ethernetCategory;
+  coaxTypeSelect.value = state.coaxType;
 
   syncTubeSizeOptions(totalFibers, state.tubeSize);
   renderMap(totalFibers);
@@ -745,6 +922,7 @@ function applyState(state) {
   renderPairMap(totalPairs);
   restoreSavedPairSelection(state.selectedTotalPair);
   renderEthernetDiagram(ethernetCatalog[state.ethernetCategory] ?? ethernetCatalog.cat1);
+  renderCoaxDiagram(coaxCatalog[state.coaxType] ?? coaxCatalog.rg59);
 }
 
 function configureMap(totalFibers, preferredTubeSize) {
@@ -948,6 +1126,11 @@ resetPairBtn.addEventListener("click", () => {
 
 ethernetCategorySelect.addEventListener("change", () => {
   renderEthernetDiagram(ethernetCatalog[ethernetCategorySelect.value]);
+  saveState();
+});
+
+coaxTypeSelect.addEventListener("change", () => {
+  renderCoaxDiagram(coaxCatalog[coaxTypeSelect.value]);
   saveState();
 });
 

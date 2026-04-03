@@ -11,7 +11,7 @@
 
 <header class="app-header">
   <div class="app-header-copy">
-    <p id="page-kicker">Page 1 of 3</p>
+    <p id="page-kicker">Page 1 of 5</p>
     <h1 id="page-title">Color Optics</h1>
   </div>
 </header>
@@ -164,11 +164,59 @@
   </div>
 </section>
 
+<section class="page" id="page-5">
+  <div class="tool-panel">
+    <label for="coax-type">Coax Cable Type</label>
+    <select id="coax-type">
+      <option value="rg59">RG-59</option>
+      <option value="rg6">RG-6</option>
+      <option value="rg6qs">RG-6 Quad Shield</option>
+      <option value="rg11">RG-11</option>
+      <option value="rg58">RG-58</option>
+      <option value="rg8">RG-8</option>
+      <option value="rg174">RG-174</option>
+      <option value="hardline500">0.500 Hardline</option>
+    </select>
+  </div>
+
+  <div class="ethernet-layout">
+    <section class="ethernet-panel">
+      <p class="hero-eyebrow">Reference</p>
+      <h2 id="coax-title">RG-59</h2>
+      <p id="coax-summary"></p>
+
+      <div class="ethernet-stats">
+        <article class="ethernet-stat-card">
+          <span class="ethernet-stat-label">Data Capacity</span>
+          <strong id="coax-data-rate"></strong>
+        </article>
+        <article class="ethernet-stat-card">
+          <span class="ethernet-stat-label">Bandwidth</span>
+          <strong id="coax-bandwidth"></strong>
+        </article>
+        <article class="ethernet-stat-card">
+          <span class="ethernet-stat-label">Distance</span>
+          <strong id="coax-distance"></strong>
+        </article>
+      </div>
+
+      <p id="coax-note" class="ethernet-note"></p>
+    </section>
+
+    <section class="ethernet-panel">
+      <p class="hero-eyebrow">Simple Wiring Diagram</p>
+      <h3 id="coax-diagram-title">75 Ohm Drop Cable Layout</h3>
+      <div id="coax-diagram" class="coax-diagram" aria-live="polite"></div>
+    </section>
+  </div>
+</section>
+
 <nav class="bottom-tabs" aria-label="Primary">
   <button class="tab-btn active" type="button" data-page-target="page-1">Color Optics</button>
   <button class="tab-btn" type="button" data-page-target="page-2">Fiber Color Code</button>
   <button class="tab-btn" type="button" data-page-target="page-3">Twisted Pair</button>
   <button class="tab-btn" type="button" data-page-target="page-4">Ethernet</button>
+  <button class="tab-btn" type="button" data-page-target="page-5">Coax</button>
 </nav>
 
 <script src="script.js"></script>

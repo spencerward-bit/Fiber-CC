@@ -114,6 +114,74 @@ body {
   gap: 10px;
 }
 
+.coax-diagram {
+  display: grid;
+  gap: 12px;
+}
+
+.coax-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.coax-layer,
+.coax-meta-card {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid #1f2a31;
+  background: rgba(8, 14, 18, 0.82);
+}
+
+.coax-layer {
+  position: relative;
+  overflow: hidden;
+}
+
+.coax-layer::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
+  opacity: 0.95;
+}
+
+.coax-jacket::before {
+  background: linear-gradient(180deg, #3d444d, #1c2026);
+}
+
+.coax-shield::before {
+  background: linear-gradient(180deg, #d7dde2, #74808d);
+}
+
+.coax-dielectric::before {
+  background: linear-gradient(180deg, #f6f1d0, #d8c98a);
+}
+
+.coax-center::before {
+  background: linear-gradient(180deg, #ffd06a, #d18a1f);
+}
+
+.coax-layer-name {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8ea3b3;
+}
+
+.coax-layer strong,
+.coax-meta-card strong {
+  display: block;
+  line-height: 1.35;
+}
+
+.coax-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .ethernet-pinout-compare {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -195,7 +263,7 @@ body {
   right: 0;
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
   background: rgba(5, 10, 14, 0.96);
@@ -212,6 +280,8 @@ body {
   border: 1px solid transparent;
   font-size: 13px;
   font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
 }
 
 .tab-btn.active {
@@ -495,7 +565,8 @@ button {
   .ethernet-layout,
   .ethernet-stats,
   .ethernet-legacy,
-  .ethernet-pinout-compare {
+  .ethernet-pinout-compare,
+  .coax-meta-grid {
     grid-template-columns: 1fr;
   }
 
@@ -550,8 +621,8 @@ button {
   }
 
   .tab-btn {
-    font-size: 11px;
-    padding: 10px 6px;
+    font-size: 10px;
+    padding: 9px 4px;
   }
 
   .pair-grid {

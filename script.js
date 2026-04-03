@@ -45,6 +45,15 @@ const jumpTotalPairBtn = document.getElementById("jump-total-pair-btn");
 const resetPairBtn = document.getElementById("reset-pair-btn");
 const pairMap = document.getElementById("pair-map");
 const pairInfoBar = document.getElementById("pair-info-bar");
+const ethernetCategorySelect = document.getElementById("ethernet-category");
+const ethernetTitle = document.getElementById("ethernet-title");
+const ethernetSummary = document.getElementById("ethernet-summary");
+const ethernetDataRate = document.getElementById("ethernet-data-rate");
+const ethernetBandwidth = document.getElementById("ethernet-bandwidth");
+const ethernetDistance = document.getElementById("ethernet-distance");
+const ethernetNote = document.getElementById("ethernet-note");
+const ethernetDiagramTitle = document.getElementById("ethernet-diagram-title");
+const ethernetDiagram = document.getElementById("ethernet-diagram");
 const pageTitle = document.getElementById("page-title");
 const pageKicker = document.getElementById("page-kicker");
 const pages = Array.from(document.querySelectorAll(".page"));
@@ -55,7 +64,8 @@ const pairCounts = Array.from(pairCountSelect.options).map(option => parseInt(op
 const pageOrder = [
   { id: "page-1", title: "Color Optics" },
   { id: "page-2", title: "Fiber Color Code" },
-  { id: "page-3", title: "Twisted Pair Color Code" }
+  { id: "page-3", title: "Twisted Pair Color Code" },
+  { id: "page-4", title: "Ethernet" }
 ];
 
 const pairMajorColors = ["White", "Red", "Black", "Yellow", "Violet"];
@@ -73,6 +83,158 @@ const twistedPairColorMap = {
   Violet: "#E88CFF"
 };
 
+const ethernetPinColors = [
+  { pin: 1, label: "White/Orange", pair: "Pair 2", color: "#F4F4F4", text: "#111111" },
+  { pin: 2, label: "Orange", pair: "Pair 2", color: "#FFAA00", text: "#111111" },
+  { pin: 3, label: "White/Green", pair: "Pair 3", color: "#F4F4F4", text: "#111111" },
+  { pin: 4, label: "Blue", pair: "Pair 1", color: "#1F3CFF", text: "#FFFFFF" },
+  { pin: 5, label: "White/Blue", pair: "Pair 1", color: "#F4F4F4", text: "#111111" },
+  { pin: 6, label: "Green", pair: "Pair 3", color: "#39FF14", text: "#111111" },
+  { pin: 7, label: "White/Brown", pair: "Pair 4", color: "#F4F4F4", text: "#111111" },
+  { pin: 8, label: "Brown", pair: "Pair 4", color: "#A23A32", text: "#FFFFFF" }
+];
+
+const ethernetCatalog = {
+  cat1: {
+    title: "CAT 1",
+    summary: "Legacy voice-grade cabling used for plain old telephone service and very low speed signaling.",
+    dataRate: "Up to 1 Mbps",
+    bandwidth: "1 MHz",
+    distance: "About 100 m for voice/low-speed legacy use",
+    note: "CAT 1 is not intended for modern Ethernet. This legacy diagram shows a simple single-pair voice path instead of an RJ45 Ethernet pinout.",
+    diagramTitle: "Legacy Single-Pair Voice/Data",
+    diagramType: "legacy",
+    legacyPairs: [
+      { title: "Pair A", text: "Tip: Green | Ring: Red" },
+      { title: "Pair B", text: "Spare / station dependent" }
+    ]
+  },
+  cat2: {
+    title: "CAT 2",
+    summary: "Early low-speed balanced pair cable used for Token Ring and other pre-fast-Ethernet data systems.",
+    dataRate: "Up to 4 Mbps",
+    bandwidth: "4 MHz",
+    distance: "About 100 m in legacy low-speed use",
+    note: "CAT 2 predates modern structured cabling. Use this as a simple legacy pair reference, not a modern Ethernet recommendation.",
+    diagramTitle: "Legacy Two-Pair Reference",
+    diagramType: "legacy",
+    legacyPairs: [
+      { title: "Pair 1", text: "Tip: White/Blue | Ring: Blue" },
+      { title: "Pair 2", text: "Tip: White/Orange | Ring: Orange" }
+    ]
+  },
+  cat3: {
+    title: "CAT 3",
+    summary: "10BASE-T era cable that can support early Ethernet and voice on structured cabling runs.",
+    dataRate: "10 Mbps",
+    bandwidth: "16 MHz",
+    distance: "100 m",
+    note: "Shown with a simple T568B-style 8P8C pinout for field reference.",
+    diagramTitle: "T568B 8P8C Pinout",
+    diagramType: "pinout"
+  },
+  cat4: {
+    title: "CAT 4",
+    summary: "Legacy structured cabling primarily associated with 16 Mbps Token Ring installations.",
+    dataRate: "16 Mbps",
+    bandwidth: "20 MHz",
+    distance: "100 m",
+    note: "Not common in current Ethernet work, but often referenced in older building cabling.",
+    diagramTitle: "T568B 8P8C Pinout",
+    diagramType: "pinout"
+  },
+  cat5: {
+    title: "CAT 5",
+    summary: "Structured cabling for early Fast Ethernet deployments and voice/data cross-connects.",
+    dataRate: "100 Mbps",
+    bandwidth: "100 MHz",
+    distance: "100 m",
+    note: "This reference uses the common T568B pin order.",
+    diagramTitle: "T568B 8P8C Pinout",
+    diagramType: "pinout"
+  },
+  cat5e: {
+    title: "CAT 5e",
+    summary: "Enhanced Category 5 cable commonly used for Gigabit Ethernet in homes and commercial spaces.",
+    dataRate: "1 Gbps",
+    bandwidth: "100 MHz",
+    distance: "100 m",
+    note: "Still one of the most common Ethernet categories in the field.",
+    diagramTitle: "T568B 8P8C Pinout",
+    diagramType: "pinout"
+  },
+  cat6: {
+    title: "CAT 6",
+    summary: "Higher-performance copper cabling used for Gigabit and short-run 10 Gigabit Ethernet.",
+    dataRate: "1 Gbps at 100 m, 10 Gbps to about 55 m",
+    bandwidth: "250 MHz",
+    distance: "100 m typical, 55 m at 10 Gbps",
+    note: "Shielding is optional; termination quality matters more at higher speeds.",
+    diagramTitle: "T568B 8P8C Pinout",
+    diagramType: "pinout"
+  },
+  cat6a: {
+    title: "CAT 6a",
+    summary: "Augmented Category 6 cable designed for full-distance 10 Gigabit Ethernet.",
+    dataRate: "10 Gbps",
+    bandwidth: "500 MHz",
+    distance: "100 m",
+    note: "A common enterprise choice when 10 Gig copper is required over full channel length.",
+    diagramTitle: "T568B 8P8C Pinout",
+    diagramType: "pinout"
+  },
+  cat7: {
+    title: "CAT 7",
+    summary: "Heavily shielded cable class used in specialty installations with higher frequency performance.",
+    dataRate: "10 Gbps",
+    bandwidth: "600 MHz",
+    distance: "100 m",
+    note: "Often discussed with GG45/TERA-style systems even though field use varies by region.",
+    diagramTitle: "Shielded 4-Pair Reference",
+    diagramType: "pinout"
+  },
+  cat7a: {
+    title: "CAT 7a",
+    summary: "Extended shielded twisted-pair class intended for higher frequency headroom than CAT 7.",
+    dataRate: "10 Gbps",
+    bandwidth: "1000 MHz",
+    distance: "100 m",
+    note: "Usually referenced in specialized shielded systems rather than mainstream office copper.",
+    diagramTitle: "Shielded 4-Pair Reference",
+    diagramType: "pinout"
+  },
+  cat8: {
+    title: "CAT 8",
+    summary: "Short-reach data center copper for high-speed 25G and 40G Ethernet channels.",
+    dataRate: "25/40 Gbps",
+    bandwidth: "2000 MHz",
+    distance: "30 m",
+    note: "CAT 8 is intended for short links, typically top-of-rack to switch/server runs.",
+    diagramTitle: "Shielded 4-Pair RJ45 Reference",
+    diagramType: "pinout"
+  },
+  "cat8.1": {
+    title: "CAT 8.1",
+    summary: "Class I implementation of CAT 8 using RJ45-compatible connectivity and short high-speed links.",
+    dataRate: "25/40 Gbps",
+    bandwidth: "2000 MHz",
+    distance: "30 m",
+    note: "CAT 8.1 is the RJ45-oriented flavor of CAT 8 for short data center channels.",
+    diagramTitle: "Shielded 4-Pair RJ45 Reference",
+    diagramType: "pinout"
+  },
+  "cat8.2": {
+    title: "CAT 8.2",
+    summary: "Class II implementation of CAT 8 typically associated with specialty shielded connectors and short 25/40G channels.",
+    dataRate: "25/40 Gbps",
+    bandwidth: "2000 MHz",
+    distance: "30 m",
+    note: "CAT 8.2 is a shielded high-frequency short-link system, usually not used for standard office patching.",
+    diagramTitle: "Shielded 4-Pair Reference",
+    diagramType: "pinout"
+  }
+};
+
 let currentPageId = "page-1";
 
 const defaultState = {
@@ -87,7 +249,8 @@ const defaultState = {
   jumpBinder: "",
   jumpPair: "",
   jumpTotalPair: "",
-  selectedTotalPair: null
+  selectedTotalPair: null,
+  ethernetCategory: ethernetCategorySelect.value
 };
 
 function getCurrentState() {
@@ -106,7 +269,8 @@ function getCurrentState() {
     jumpBinder: jumpBinderInput.value,
     jumpPair: jumpPairInput.value,
     jumpTotalPair: jumpTotalPairInput.value,
-    selectedTotalPair: activePair ? activePair.dataset.totalPair : null
+    selectedTotalPair: activePair ? activePair.dataset.totalPair : null,
+    ethernetCategory: ethernetCategorySelect.value
   };
 }
 
@@ -250,6 +414,42 @@ function selectFiber(target) {
 
 function updatePairInfoBar(message = "Tap a pair") {
   pairInfoBar.textContent = message;
+}
+
+function renderEthernetDiagram(entry) {
+  ethernetTitle.textContent = entry.title;
+  ethernetSummary.textContent = entry.summary;
+  ethernetDataRate.textContent = entry.dataRate;
+  ethernetBandwidth.textContent = entry.bandwidth;
+  ethernetDistance.textContent = entry.distance;
+  ethernetNote.textContent = entry.note;
+  ethernetDiagramTitle.textContent = entry.diagramTitle;
+
+  if (entry.diagramType === "legacy") {
+    ethernetDiagram.innerHTML = `
+      <div class="ethernet-legacy">
+        ${entry.legacyPairs.map(pair => `
+          <article class="ethernet-legacy-pair">
+            <strong>${pair.title}</strong>
+            <span>${pair.text}</span>
+          </article>
+        `).join("")}
+      </div>
+    `;
+    return;
+  }
+
+  ethernetDiagram.innerHTML = `
+    <div class="ethernet-pinout">
+      ${ethernetPinColors.map(pin => `
+        <article class="ethernet-pin" style="background:${pin.color};color:${pin.text}">
+          <span class="ethernet-pin-number">Pin ${pin.pin}</span>
+          <span class="ethernet-pin-color">${pin.label}</span>
+          <span class="ethernet-pin-pair">${pin.pair}</span>
+        </article>
+      `).join("")}
+    </div>
+  `;
 }
 
 function getBinderLabel(binderNumber) {
@@ -509,12 +709,14 @@ function applyState(state) {
   jumpBinderInput.value = state.jumpBinder;
   jumpPairInput.value = state.jumpPair;
   jumpTotalPairInput.value = state.jumpTotalPair;
+  ethernetCategorySelect.value = state.ethernetCategory;
 
   syncTubeSizeOptions(totalFibers, state.tubeSize);
   renderMap(totalFibers);
   restoreSavedSelection(state.selectedTotal);
   renderPairMap(totalPairs);
   restoreSavedPairSelection(state.selectedTotalPair);
+  renderEthernetDiagram(ethernetCatalog[state.ethernetCategory] ?? ethernetCatalog.cat1);
 }
 
 function configureMap(totalFibers, preferredTubeSize) {
@@ -713,6 +915,11 @@ resetPairBtn.addEventListener("click", () => {
   jumpTotalPairInput.value = "";
   renderPairMap(parseInt(defaultState.pairCount));
   updatePairInfoBar();
+  saveState();
+});
+
+ethernetCategorySelect.addEventListener("change", () => {
+  renderEthernetDiagram(ethernetCatalog[ethernetCategorySelect.value]);
   saveState();
 });
 

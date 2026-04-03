@@ -112,10 +112,63 @@
   <div id="pair-info-bar">Tap a pair</div>
 </section>
 
+<section class="page" id="page-4">
+  <div class="tool-panel">
+    <label for="ethernet-category">Ethernet Category</label>
+    <select id="ethernet-category">
+      <option value="cat1">CAT 1</option>
+      <option value="cat2">CAT 2</option>
+      <option value="cat3">CAT 3</option>
+      <option value="cat4">CAT 4</option>
+      <option value="cat5">CAT 5</option>
+      <option value="cat5e">CAT 5e</option>
+      <option value="cat6">CAT 6</option>
+      <option value="cat6a">CAT 6a</option>
+      <option value="cat7">CAT 7</option>
+      <option value="cat7a">CAT 7a</option>
+      <option value="cat8">CAT 8</option>
+      <option value="cat8.1">CAT 8.1</option>
+      <option value="cat8.2">CAT 8.2</option>
+    </select>
+  </div>
+
+  <div class="ethernet-layout">
+    <section class="ethernet-panel">
+      <p class="hero-eyebrow">Reference</p>
+      <h2 id="ethernet-title">CAT 1</h2>
+      <p id="ethernet-summary"></p>
+
+      <div class="ethernet-stats">
+        <article class="ethernet-stat-card">
+          <span class="ethernet-stat-label">Data Rate</span>
+          <strong id="ethernet-data-rate"></strong>
+        </article>
+        <article class="ethernet-stat-card">
+          <span class="ethernet-stat-label">Bandwidth</span>
+          <strong id="ethernet-bandwidth"></strong>
+        </article>
+        <article class="ethernet-stat-card">
+          <span class="ethernet-stat-label">Distance</span>
+          <strong id="ethernet-distance"></strong>
+        </article>
+      </div>
+
+      <p id="ethernet-note" class="ethernet-note"></p>
+    </section>
+
+    <section class="ethernet-panel">
+      <p class="hero-eyebrow">Simple Wiring Diagram</p>
+      <h3 id="ethernet-diagram-title">Legacy Voice/Data Pairing</h3>
+      <div id="ethernet-diagram" class="ethernet-diagram" aria-live="polite"></div>
+    </section>
+  </div>
+</section>
+
 <nav class="bottom-tabs" aria-label="Primary">
   <button class="tab-btn active" type="button" data-page-target="page-1">Color Optics</button>
   <button class="tab-btn" type="button" data-page-target="page-2">Fiber Color Code</button>
   <button class="tab-btn" type="button" data-page-target="page-3">Twisted Pair</button>
+  <button class="tab-btn" type="button" data-page-target="page-4">Ethernet</button>
 </nav>
 
 <script src="script.js"></script>

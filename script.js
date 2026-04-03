@@ -83,13 +83,24 @@ const twistedPairColorMap = {
   Violet: "#E88CFF"
 };
 
-const ethernetPinColors = [
+const ethernetPinColorsB = [
   { pin: 1, label: "White/Orange", pair: "Pair 2", color: "#F4F4F4", text: "#111111" },
   { pin: 2, label: "Orange", pair: "Pair 2", color: "#FFAA00", text: "#111111" },
   { pin: 3, label: "White/Green", pair: "Pair 3", color: "#F4F4F4", text: "#111111" },
   { pin: 4, label: "Blue", pair: "Pair 1", color: "#1F3CFF", text: "#FFFFFF" },
   { pin: 5, label: "White/Blue", pair: "Pair 1", color: "#F4F4F4", text: "#111111" },
   { pin: 6, label: "Green", pair: "Pair 3", color: "#39FF14", text: "#111111" },
+  { pin: 7, label: "White/Brown", pair: "Pair 4", color: "#F4F4F4", text: "#111111" },
+  { pin: 8, label: "Brown", pair: "Pair 4", color: "#A23A32", text: "#FFFFFF" }
+];
+
+const ethernetPinColorsA = [
+  { pin: 1, label: "White/Green", pair: "Pair 3", color: "#F4F4F4", text: "#111111" },
+  { pin: 2, label: "Green", pair: "Pair 3", color: "#39FF14", text: "#111111" },
+  { pin: 3, label: "White/Orange", pair: "Pair 2", color: "#F4F4F4", text: "#111111" },
+  { pin: 4, label: "Blue", pair: "Pair 1", color: "#1F3CFF", text: "#FFFFFF" },
+  { pin: 5, label: "White/Blue", pair: "Pair 1", color: "#F4F4F4", text: "#111111" },
+  { pin: 6, label: "Orange", pair: "Pair 2", color: "#FFAA00", text: "#111111" },
   { pin: 7, label: "White/Brown", pair: "Pair 4", color: "#F4F4F4", text: "#111111" },
   { pin: 8, label: "Brown", pair: "Pair 4", color: "#A23A32", text: "#FFFFFF" }
 ];
@@ -440,14 +451,31 @@ function renderEthernetDiagram(entry) {
   }
 
   ethernetDiagram.innerHTML = `
-    <div class="ethernet-pinout">
-      ${ethernetPinColors.map(pin => `
-        <article class="ethernet-pin" style="background:${pin.color};color:${pin.text}">
-          <span class="ethernet-pin-number">Pin ${pin.pin}</span>
-          <span class="ethernet-pin-color">${pin.label}</span>
-          <span class="ethernet-pin-pair">${pin.pair}</span>
-        </article>
-      `).join("")}
+    <div class="ethernet-pinout-compare">
+      <section class="ethernet-pinout-block">
+        <h4>T568A</h4>
+        <div class="ethernet-pinout">
+          ${ethernetPinColorsA.map(pin => `
+            <article class="ethernet-pin" style="background:${pin.color};color:${pin.text}">
+              <span class="ethernet-pin-number">Pin ${pin.pin}</span>
+              <span class="ethernet-pin-color">${pin.label}</span>
+              <span class="ethernet-pin-pair">${pin.pair}</span>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+      <section class="ethernet-pinout-block">
+        <h4>T568B</h4>
+        <div class="ethernet-pinout">
+          ${ethernetPinColorsB.map(pin => `
+            <article class="ethernet-pin" style="background:${pin.color};color:${pin.text}">
+              <span class="ethernet-pin-number">Pin ${pin.pin}</span>
+              <span class="ethernet-pin-color">${pin.label}</span>
+              <span class="ethernet-pin-pair">${pin.pair}</span>
+            </article>
+          `).join("")}
+        </div>
+      </section>
     </div>
   `;
 }

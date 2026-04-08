@@ -499,15 +499,16 @@ function toRomanNumeral(value) {
 }
 
 function getTubeRibbonMarkup(tubeNumber) {
-  const ribbonCount = Math.floor((tubeNumber - 1) / 12);
-
-  if (ribbonCount < 1) {
-    return "";
-  }
-
-  return Array.from({ length: ribbonCount }, () =>
-    '<span class="tube-ribbon-marker" aria-hidden="true"></span>'
+  const boxCount = Math.floor(tubeNumber / 5);
+  const lineCount = tubeNumber % 5;
+  const boxMarkup = Array.from({ length: boxCount }, () =>
+    '<span class="tube-ribbon-box" aria-hidden="true"></span>'
   ).join("");
+  const lineMarkup = Array.from({ length: lineCount }, () =>
+    '<span class="tube-ribbon-line" aria-hidden="true"></span>'
+  ).join("");
+
+  return boxMarkup + lineMarkup;
 }
 
 function syncTubeSizeOptions(totalFibers, preferredTubeSize = tubeSizeSelect.value) {

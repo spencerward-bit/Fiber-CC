@@ -369,6 +369,10 @@ button {
 /* ===== Tube Title (Accordion Tab) ===== */
 .tube-title {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   padding: 10px 12px;
   margin-bottom: 8px;
   font-weight: bold;
@@ -377,32 +381,75 @@ button {
   box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.2);
 }
 
-/* Accordion arrow */
-.tube-title::after {
-  content: "▸";
-  float: right;
+.tube-title-label {
+  min-width: 0;
+}
+
+.tube-title-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tube-ribbon-set {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-height: 18px;
+}
+
+.tube-ribbon-marker {
+  position: relative;
+  display: block;
+  width: 7px;
+  height: 16px;
+  border-radius: 2px 2px 4px 4px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.28),
+    0 1px 1px rgba(0, 0, 0, 0.18);
+}
+
+.tube-ribbon-marker::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  width: 1.5px;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.42);
+  transform: translateX(-50%);
+}
+
+.tube-ribbon-marker::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 5px;
+  background: linear-gradient(135deg, transparent 50%, rgba(0, 0, 0, 0.12) 51%) bottom left / 50% 100% no-repeat,
+    linear-gradient(-135deg, transparent 50%, rgba(0, 0, 0, 0.12) 51%) bottom right / 50% 100% no-repeat;
+}
+
+.tube-title-chevron {
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
   transition: transform 0.2s ease;
 }
 
-.tube.open .tube-title::after {
-  transform: rotate(90deg);
+.tube.open .tube-title-chevron {
+  transform: rotate(45deg);
 }
 
 .tube.open {
   background: #1c1c1c;
-}
-
-/* ===== Tube Hash Marks ===== */
-.tube-title.hash-1::before {
-  content: " ′";
-  margin-left: 6px;
-  font-weight: bold;
-}
-
-.tube-title.hash-2::before {
-  content: " ″";
-  margin-left: 6px;
-  font-weight: bold;
 }
 
 /* ===== Fiber Row ===== */
@@ -590,6 +637,28 @@ button {
 
   .fiber-row {
     gap: 6px;
+  }
+
+  .tube-title {
+    gap: 8px;
+  }
+
+  .tube-title-right {
+    gap: 6px;
+  }
+
+  .tube-ribbon-set {
+    gap: 3px;
+  }
+
+  .tube-ribbon-marker {
+    width: 6px;
+    height: 14px;
+  }
+
+  .tube-title-chevron {
+    width: 8px;
+    height: 8px;
   }
 
   .fiber {

@@ -498,6 +498,18 @@ function toRomanNumeral(value) {
   return result;
 }
 
+function getTubeRibbonMarkup(tubeNumber) {
+  const ribbonCount = Math.floor((tubeNumber - 1) / 12);
+
+  if (ribbonCount < 1) {
+    return "";
+  }
+
+  return Array.from({ length: ribbonCount }, () =>
+    '<span class="tube-ribbon-marker" aria-hidden="true"></span>'
+  ).join("");
+}
+
 function syncTubeSizeOptions(totalFibers, preferredTubeSize = tubeSizeSelect.value) {
   const options = Array.from(tubeSizeSelect.options);
   let fallbackValue = options[0].value;
@@ -816,15 +828,14 @@ function renderMap(totalFibers) {
     title.className = "tube-title";
     title.style.background = fiberColorMap[tubeColor];
     title.style.color = tubeTextColor;
-    title.textContent = `Tube ${tubeIndex + 1} - ${tubeColor}`;
-
-    // Tube hash marks
     const tubeNumber = tubeIndex + 1;
-    if (tubeNumber > 12 && tubeNumber <= 24) {
-      title.classList.add("hash-1");
-    } else if (tubeNumber > 24) {
-      title.classList.add("hash-2");
-    }
+    title.innerHTML = `
+      <span class="tube-title-label">Tube ${tubeNumber} - ${tubeColor}</span>
+      <span class="tube-title-right">
+        <span class="tube-ribbon-set">${getTubeRibbonMarkup(tubeNumber)}</span>
+        <span class="tube-title-chevron" aria-hidden="true"></span>
+      </span>
+    `;
 
     title.onclick = () => {
       const isOpen = tubeDiv.classList.contains("open");

@@ -763,7 +763,7 @@ button {
 /* ===== Info Bar ===== */
 #info-bar {
   position: sticky;
-  bottom: 72px;
+  bottom: calc(54px + env(safe-area-inset-bottom, 0px));
   background: #000;
   padding: 14px;
   font-size: 16px;
@@ -781,7 +781,7 @@ button {
 
 #pair-info-bar {
   position: sticky;
-  bottom: 72px;
+  bottom: calc(54px + env(safe-area-inset-bottom, 0px));
   max-width: 980px;
   margin: 0 auto;
   background: #000;

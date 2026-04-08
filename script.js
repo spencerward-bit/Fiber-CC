@@ -67,6 +67,7 @@ const pageTitle = document.getElementById("page-title");
 const pageKicker = document.getElementById("page-kicker");
 const pages = Array.from(document.querySelectorAll(".page"));
 const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
+const homeLinkButtons = Array.from(document.querySelectorAll(".home-link-btn"));
 const cableSizes = Array.from(fiberCountSelect.options).map(option => parseInt(option.value));
 const tubeSizes = Array.from(tubeSizeSelect.options).map(option => parseInt(option.value));
 const pairCounts = Array.from(pairCountSelect.options).map(option => parseInt(option.value));
@@ -959,6 +960,12 @@ applyState(loadState());
 tabButtons.forEach(button => {
   button.addEventListener("click", () => {
     setCurrentPage(button.dataset.pageTarget);
+  });
+});
+
+homeLinkButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    setCurrentPage(button.dataset.homeTarget);
   });
 });
 

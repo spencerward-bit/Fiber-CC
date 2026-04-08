@@ -295,6 +295,10 @@ body {
   font-size: clamp(28px, 5vw, 44px);
 }
 
+.hero-lead {
+  font-size: clamp(17px, 2.2vw, 22px);
+}
+
 .hero-card p {
   max-width: 48rem;
   color: #d4dde3;
@@ -307,6 +311,92 @@ body {
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.hero-stats,
+.home-grid {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.hero-stat-card,
+.home-card {
+  border: 1px solid #202830;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(20, 28, 36, 0.95), rgba(10, 14, 18, 0.95));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.hero-stat-card {
+  padding: 14px;
+}
+
+.hero-stat-value {
+  display: block;
+  font-size: clamp(20px, 3vw, 28px);
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.hero-stat-label {
+  display: block;
+  margin-top: 4px;
+  color: #8ea3b3;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.home-card {
+  padding: 18px;
+}
+
+.home-card h3 {
+  margin: 0 0 10px;
+  font-size: clamp(21px, 3vw, 28px);
+}
+
+.home-card p {
+  margin: 0;
+  color: #d4dde3;
+  line-height: 1.5;
+}
+
+.home-card-feature {
+  grid-column: 1 / -1;
+}
+
+.home-list {
+  margin: 14px 0 0;
+  padding-left: 18px;
+  color: #d4dde3;
+}
+
+.home-list li + li {
+  margin-top: 8px;
+}
+
+.home-link-btn {
+  margin-top: 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 229, 255, 0.28);
+  background: rgba(0, 229, 255, 0.14);
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .tool-panel label {
@@ -608,8 +698,18 @@ button {
   .ethernet-stats,
   .ethernet-legacy,
   .ethernet-pinout-compare,
+  .hero-stats,
+  .home-grid,
   .coax-meta-grid {
     grid-template-columns: 1fr;
+  }
+
+  .home-card {
+    padding: 16px;
+  }
+
+  .home-link-btn {
+    width: 100%;
   }
 
   .ethernet-pinout {

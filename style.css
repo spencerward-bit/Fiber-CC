@@ -399,7 +399,7 @@ button {
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
-  width: 140px;
+  width: 148px;
   min-height: 18px;
   align-content: flex-start;
   padding-top: 1px;
@@ -644,7 +644,7 @@ button {
 
   .tube-ribbon-set {
     gap: 3px;
-    width: 112px;
+    width: 120px;
   }
 
   .tube-ribbon-box,

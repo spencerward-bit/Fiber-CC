@@ -64,7 +64,6 @@ const coaxNote = document.getElementById("coax-note");
 const coaxDiagramTitle = document.getElementById("coax-diagram-title");
 const coaxDiagram = document.getElementById("coax-diagram");
 const pageTitle = document.getElementById("page-title");
-const pageKicker = document.getElementById("page-kicker");
 const pages = Array.from(document.querySelectorAll(".page"));
 const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
 const homeLinkButtons = Array.from(document.querySelectorAll(".home-link-btn"));
@@ -457,7 +456,6 @@ function setCurrentPage(pageId, shouldSave = true) {
   });
 
   pageTitle.textContent = activePage.title;
-  pageKicker.textContent = `Page ${pageOrder.findIndex(page => page.id === activePage.id) + 1} of ${pageOrder.length}`;
   document.title = activePage.title;
 
   if (shouldSave) {

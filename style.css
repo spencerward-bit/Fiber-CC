@@ -51,9 +51,17 @@ body {
   max-width: 980px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
   gap: 18px;
   align-items: start;
+}
+
+.account-shell > .auth-panel,
+.account-shell > .hero-card {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 .auth-panel {

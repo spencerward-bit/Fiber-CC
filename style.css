@@ -460,6 +460,13 @@ body {
   text-transform: uppercase;
 }
 
+.legal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
 .tool-panel label {
   display: inline-block;
   margin: 0 8px 0 0;

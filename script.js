@@ -76,7 +76,9 @@ const pageOrder = [
   { id: "page-2", title: "Fiber Color Code" },
   { id: "page-3", title: "Twisted Pair Color Code" },
   { id: "page-4", title: "Ethernet" },
-  { id: "page-5", title: "Coax" }
+  { id: "page-5", title: "Coax" },
+  { id: "page-6", title: "Terms and Conditions" },
+  { id: "page-7", title: "Privacy Policy" }
 ];
 
 const pairMajorColors = ["White", "Red", "Black", "Yellow", "Violet"];

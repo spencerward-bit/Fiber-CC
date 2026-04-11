@@ -97,6 +97,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentAuthMode = "register";
 let currentUser = null;
+let isHydratingCloudState = false;
 
 const pairMajorColors = ["White", "Red", "Black", "Yellow", "Violet"];
 const pairMinorColors = ["Blue", "Orange", "Green", "Brown", "Slate"];
@@ -440,8 +441,35 @@ function getCurrentState() {
   };
 }
 
+function saveLocalState(state) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+async function saveCloudState(state) {
+  if (!currentUser || isHydratingCloudState) {
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("user_settings")
+    .upsert(
+      {
+        user_id: currentUser.id,
+        state,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: "user_id" }
+    );
+
+  if (error) {
+    console.error("Cloud save failed:", error.message);
+  }
+}
+
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(getCurrentState()));
+  const state = getCurrentState();
+  saveLocalState(state);
+  void saveCloudState(state);
 }
 
 function loadState() {
@@ -472,6 +500,25 @@ function setAuthFeedback(message = "", type = "") {
   }
 }
 
+async function loadCloudStateForUser(user) {
+  if (!user) {
+    return null;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("user_settings")
+    .select("state")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Cloud load failed:", error.message);
+    return null;
+  }
+
+  return data?.state ?? null;
+}
+
 function setAuthMode(mode) {
   currentAuthMode = mode;
   const isRegister = mode === "register";
@@ -497,7 +544,7 @@ function updateAuthUI(user) {
 
   if (isSignedIn) {
     authUserEmail.textContent = user.email ?? "Signed-in user";
-    authSessionCopy.textContent = "Your account is connected. Saved cloud sync comes next.";
+    authSessionCopy.textContent = "Your account is connected. Your settings can now sync with Supabase.";
   } else {
     authUserEmail.textContent = "";
     setAuthMode(currentAuthMode);
@@ -1044,17 +1091,49 @@ function resetTwistedPairPage() {
 applyState(loadState());
 setAuthMode("register");
 
-supabaseClient.auth.getSession().then(({ data, error }) => {
+supabaseClient.auth.getSession().then(async ({ data, error }) => {
   if (error) {
     setAuthFeedback(error.message, "error");
     return;
   }
 
-  updateAuthUI(data.session?.user ?? null);
+  const user = data.session?.user ?? null;
+  updateAuthUI(user);
+
+  if (user) {
+    const cloudState = await loadCloudStateForUser(user);
+
+    if (cloudState) {
+      isHydratingCloudState = true;
+      applyState({ ...defaultState, ...cloudState });
+      saveLocalState({ ...defaultState, ...cloudState });
+      isHydratingCloudState = false;
+    }
+  }
 });
 
-supabaseClient.auth.onAuthStateChange((_event, session) => {
-  updateAuthUI(session?.user ?? null);
+supabaseClient.auth.onAuthStateChange(async (event, session) => {
+  const user = session?.user ?? null;
+  updateAuthUI(user);
+
+  if (event === "SIGNED_IN" && user) {
+    const cloudState = await loadCloudStateForUser(user);
+
+    if (cloudState) {
+      isHydratingCloudState = true;
+      applyState({ ...defaultState, ...cloudState });
+      saveLocalState({ ...defaultState, ...cloudState });
+      isHydratingCloudState = false;
+      setAuthFeedback("Signed in and loaded your saved settings.", "success");
+    } else {
+      await saveCloudState(getCurrentState());
+      setAuthFeedback("Signed in. A new cloud save profile is ready.", "success");
+    }
+  }
+
+  if (event === "SIGNED_OUT") {
+    setAuthFeedback("Signed out successfully.", "success");
+  }
 });
 
 tabButtons.forEach(button => {
@@ -1128,7 +1207,6 @@ authSignoutBtn.addEventListener("click", async () => {
 
   setAuthMode("register");
   updateAuthUI(null);
-  setAuthFeedback("Signed out successfully.", "success");
 });
 
 fiberCountSelect.addEventListener("change", () => {

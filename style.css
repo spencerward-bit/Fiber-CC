@@ -275,7 +275,7 @@ body {
   right: 0;
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 8px;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
   background: rgba(5, 10, 14, 0.96);
@@ -409,6 +409,55 @@ body {
   background: rgba(0, 229, 255, 0.14);
   color: #ffffff;
   font-weight: 700;
+}
+
+.home-footer-link {
+  max-width: 980px;
+  margin: 16px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.home-link-btn-secondary {
+  margin-top: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.legal-shell {
+  max-width: 980px;
+  margin: 0 auto;
+  display: grid;
+  gap: 12px;
+}
+
+.legal-card {
+  padding: 18px;
+  border: 1px solid #202830;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(20, 28, 36, 0.95), rgba(10, 14, 18, 0.95));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.legal-card h2,
+.legal-card h3 {
+  margin: 0 0 10px;
+}
+
+.legal-card p {
+  margin: 0;
+  color: #d4dde3;
+  line-height: 1.6;
+}
+
+.legal-effective {
+  margin-bottom: 14px !important;
+  color: #8ea3b3 !important;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .tool-panel label {
@@ -727,6 +776,10 @@ button {
 
   .home-link-btn {
     width: 100%;
+  }
+
+  .home-footer-link {
+    justify-content: stretch;
   }
 
   .ethernet-pinout {

@@ -1,7 +1,9 @@
-const CACHE_NAME = "fiber-map-v2";
+const CACHE_NAME = "fiber-map-v3";
 const STATIC_FILES = [
   "./",
   "./index.html",
+  "./terms.html",
+  "./privacy.html",
   "./style.css",
   "./script.js",
   "./manifest.json"

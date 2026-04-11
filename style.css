@@ -275,7 +275,7 @@ body {
   right: 0;
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
   background: rgba(5, 10, 14, 0.96);
@@ -402,6 +402,9 @@ body {
 }
 
 .home-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-top: 16px;
   padding: 10px 14px;
   border-radius: 10px;
@@ -409,6 +412,7 @@ body {
   background: rgba(0, 229, 255, 0.14);
   color: #ffffff;
   font-weight: 700;
+  text-decoration: none;
 }
 
 .home-footer-link {

@@ -67,7 +67,7 @@ const pageTitle = document.getElementById("page-title");
 const authEntryBtn = document.getElementById("auth-entry-btn");
 const pages = Array.from(document.querySelectorAll(".page"));
 const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
-const homeLinkButtons = Array.from(document.querySelectorAll(".home-link-btn"));
+const homeLinkButtons = Array.from(document.querySelectorAll("[data-home-target]"));
 const cableSizes = Array.from(fiberCountSelect.options).map(option => parseInt(option.value));
 const tubeSizes = Array.from(tubeSizeSelect.options).map(option => parseInt(option.value));
 const pairCounts = Array.from(pairCountSelect.options).map(option => parseInt(option.value));
@@ -76,9 +76,7 @@ const pageOrder = [
   { id: "page-2", title: "Fiber Color Code" },
   { id: "page-3", title: "Twisted Pair Color Code" },
   { id: "page-4", title: "Ethernet" },
-  { id: "page-5", title: "Coax" },
-  { id: "page-6", title: "Terms and Conditions" },
-  { id: "page-7", title: "Privacy Policy" }
+  { id: "page-5", title: "Coax" }
 ];
 
 const pairMajorColors = ["White", "Red", "Black", "Yellow", "Violet"];

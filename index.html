@@ -17,6 +17,7 @@
   <meta name="twitter:description" content="Field-ready telecom reference for fiber color code, twisted pair, Ethernet capability, and coax." />
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -35,6 +36,42 @@
   </div>
   <button id="auth-entry-btn" class="auth-entry-btn" type="button">Login / Register</button>
 </header>
+
+<div id="auth-modal" class="auth-modal hidden" aria-hidden="true">
+  <div id="auth-modal-overlay" class="auth-modal-overlay"></div>
+  <section class="auth-panel" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <button id="auth-close-btn" class="auth-close-btn" type="button" aria-label="Close">×</button>
+    <p class="hero-eyebrow">Account</p>
+    <h2 id="auth-modal-title">Login or Register</h2>
+    <p id="auth-session-copy" class="auth-copy">
+      Create an account or sign in to start saving your Color Optics data across devices.
+    </p>
+
+    <form id="auth-form" class="auth-form">
+      <label for="auth-email">Email</label>
+      <input id="auth-email" type="email" autocomplete="email" required />
+
+      <label for="auth-password">Password</label>
+      <input id="auth-password" type="password" autocomplete="current-password" minlength="6" required />
+
+      <button id="auth-submit-btn" class="auth-submit-btn" type="submit">Register</button>
+    </form>
+
+    <p id="auth-feedback" class="auth-feedback" aria-live="polite"></p>
+
+    <div id="auth-signed-in-panel" class="auth-signed-in-panel hidden">
+      <p class="auth-signed-in-copy">You are signed in as <strong id="auth-user-email"></strong>.</p>
+      <button id="auth-signout-btn" class="home-link-btn home-link-btn-secondary auth-signout-btn" type="button">
+        Sign Out
+      </button>
+    </div>
+
+    <div id="auth-toggle-row" class="auth-toggle-row">
+      <span id="auth-toggle-copy">Already have an account?</span>
+      <button id="auth-toggle-btn" class="auth-toggle-btn" type="button">Sign In</button>
+    </div>
+  </section>
+</div>
 
 <section class="page active" id="page-1">
   <div class="hero-card">

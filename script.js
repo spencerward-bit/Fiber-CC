@@ -65,6 +65,20 @@ const coaxDiagramTitle = document.getElementById("coax-diagram-title");
 const coaxDiagram = document.getElementById("coax-diagram");
 const pageTitle = document.getElementById("page-title");
 const authEntryBtn = document.getElementById("auth-entry-btn");
+const authModal = document.getElementById("auth-modal");
+const authModalOverlay = document.getElementById("auth-modal-overlay");
+const authCloseBtn = document.getElementById("auth-close-btn");
+const authForm = document.getElementById("auth-form");
+const authEmailInput = document.getElementById("auth-email");
+const authPasswordInput = document.getElementById("auth-password");
+const authSubmitBtn = document.getElementById("auth-submit-btn");
+const authFeedback = document.getElementById("auth-feedback");
+const authToggleBtn = document.getElementById("auth-toggle-btn");
+const authToggleCopy = document.getElementById("auth-toggle-copy");
+const authSessionCopy = document.getElementById("auth-session-copy");
+const authSignedInPanel = document.getElementById("auth-signed-in-panel");
+const authUserEmail = document.getElementById("auth-user-email");
+const authSignoutBtn = document.getElementById("auth-signout-btn");
 const pages = Array.from(document.querySelectorAll(".page"));
 const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
 const homeLinkButtons = Array.from(document.querySelectorAll("[data-home-target]"));
@@ -78,6 +92,11 @@ const pageOrder = [
   { id: "page-4", title: "Ethernet" },
   { id: "page-5", title: "Coax" }
 ];
+const SUPABASE_URL = "https://xekhxxodxprripdahwdr.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhla2h4eG9keHBycmlwZGFod2RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MjMzOTgsImV4cCI6MjA5MTQ5OTM5OH0.buCrTi2vnG9JQYIwdtCA1jzs0wdocdT_ul4qLoPEoPQ";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentAuthMode = "register";
+let currentUser = null;
 
 const pairMajorColors = ["White", "Red", "Black", "Yellow", "Violet"];
 const pairMinorColors = ["Blue", "Orange", "Green", "Brown", "Slate"];
@@ -442,6 +461,58 @@ function loadState() {
 
 function updateInfoBar(message = "Tap a fiber") {
   infoBar.textContent = message;
+}
+
+function setAuthFeedback(message = "", type = "") {
+  authFeedback.textContent = message;
+  authFeedback.className = "auth-feedback";
+
+  if (type) {
+    authFeedback.classList.add(type);
+  }
+}
+
+function setAuthMode(mode) {
+  currentAuthMode = mode;
+  const isRegister = mode === "register";
+
+  authSubmitBtn.textContent = isRegister ? "Register" : "Sign In";
+  authToggleCopy.textContent = isRegister ? "Already have an account?" : "Need an account?";
+  authToggleBtn.textContent = isRegister ? "Sign In" : "Register";
+  authSessionCopy.textContent = isRegister
+    ? "Create an account or sign in to start saving your Color Optics data across devices."
+    : "Sign in to access your Color Optics account and saved settings.";
+  authPasswordInput.autocomplete = isRegister ? "new-password" : "current-password";
+  setAuthFeedback();
+}
+
+function updateAuthUI(user) {
+  currentUser = user;
+  const isSignedIn = Boolean(user);
+  authEntryBtn.textContent = isSignedIn ? "Account" : "Login / Register";
+  authForm.classList.toggle("hidden", isSignedIn);
+  authToggleBtn.classList.toggle("hidden", isSignedIn);
+  authToggleCopy.classList.toggle("hidden", isSignedIn);
+  authSignedInPanel.classList.toggle("hidden", !isSignedIn);
+
+  if (isSignedIn) {
+    authUserEmail.textContent = user.email ?? "Signed-in user";
+    authSessionCopy.textContent = "Your account is connected. Saved cloud sync comes next.";
+  } else {
+    authUserEmail.textContent = "";
+    setAuthMode(currentAuthMode);
+  }
+}
+
+function openAuthModal() {
+  authModal.classList.remove("hidden");
+  authModal.setAttribute("aria-hidden", "false");
+}
+
+function closeAuthModal() {
+  authModal.classList.add("hidden");
+  authModal.setAttribute("aria-hidden", "true");
+  setAuthFeedback();
 }
 
 function setCurrentPage(pageId, shouldSave = true) {
@@ -971,6 +1042,20 @@ function resetTwistedPairPage() {
 }
 
 applyState(loadState());
+setAuthMode("register");
+
+supabaseClient.auth.getSession().then(({ data, error }) => {
+  if (error) {
+    setAuthFeedback(error.message, "error");
+    return;
+  }
+
+  updateAuthUI(data.session?.user ?? null);
+});
+
+supabaseClient.auth.onAuthStateChange((_event, session) => {
+  updateAuthUI(session?.user ?? null);
+});
 
 tabButtons.forEach(button => {
   button.addEventListener("click", () => {
@@ -982,6 +1067,68 @@ homeLinkButtons.forEach(button => {
   button.addEventListener("click", () => {
     setCurrentPage(button.dataset.homeTarget);
   });
+});
+
+authEntryBtn.addEventListener("click", () => {
+  openAuthModal();
+});
+
+authCloseBtn.addEventListener("click", closeAuthModal);
+authModalOverlay.addEventListener("click", closeAuthModal);
+
+authToggleBtn.addEventListener("click", () => {
+  setAuthMode(currentAuthMode === "register" ? "signin" : "register");
+});
+
+authForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  const email = authEmailInput.value.trim();
+  const password = authPasswordInput.value;
+
+  if (!email || !password) {
+    setAuthFeedback("Enter an email and password.", "error");
+    return;
+  }
+
+  authSubmitBtn.disabled = true;
+  setAuthFeedback(currentAuthMode === "register" ? "Creating account..." : "Signing in...");
+
+  let result;
+
+  if (currentAuthMode === "register") {
+    result = await supabaseClient.auth.signUp({ email, password });
+  } else {
+    result = await supabaseClient.auth.signInWithPassword({ email, password });
+  }
+
+  authSubmitBtn.disabled = false;
+
+  if (result.error) {
+    setAuthFeedback(result.error.message, "error");
+    return;
+  }
+
+  if (currentAuthMode === "register" && !result.data.session) {
+    setAuthFeedback("Account created. Check your email to confirm your account if prompted.", "success");
+    return;
+  }
+
+  authForm.reset();
+  setAuthFeedback(currentAuthMode === "register" ? "Account created and signed in." : "Signed in successfully.", "success");
+  updateAuthUI(result.data.user ?? result.data.session?.user ?? null);
+});
+
+authSignoutBtn.addEventListener("click", async () => {
+  const { error } = await supabaseClient.auth.signOut();
+
+  if (error) {
+    setAuthFeedback(error.message, "error");
+    return;
+  }
+
+  setAuthMode("register");
+  updateAuthUI(null);
+  setAuthFeedback("Signed out successfully.", "success");
 });
 
 fiberCountSelect.addEventListener("change", () => {

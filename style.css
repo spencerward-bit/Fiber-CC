@@ -8,6 +8,10 @@ body {
   color: #fff;
 }
 
+.hidden {
+  display: none !important;
+}
+
 /* ===== Header ===== */
 .app-header {
   position: sticky;
@@ -41,6 +45,113 @@ body {
 
 .auth-entry-btn.hidden {
   display: none;
+}
+
+.auth-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.auth-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 8, 12, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.auth-panel {
+  position: relative;
+  z-index: 1;
+  width: min(420px, calc(100vw - 24px));
+  margin: 72px auto 0;
+  padding: 22px 18px 18px;
+  border: 1px solid #202830;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(20, 28, 36, 0.98), rgba(10, 14, 18, 0.98));
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.38);
+}
+
+.auth-panel h2 {
+  margin: 0 0 10px;
+}
+
+.auth-copy,
+.auth-signed-in-copy {
+  margin: 0 0 14px;
+  color: #d4dde3;
+  line-height: 1.5;
+}
+
+.auth-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.auth-form {
+  display: grid;
+  gap: 10px;
+}
+
+.auth-form label {
+  font-weight: 700;
+}
+
+.auth-form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #293641;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.auth-submit-btn,
+.auth-signout-btn {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.auth-feedback {
+  min-height: 20px;
+  margin: 12px 0 0;
+  color: #8ea3b3;
+  line-height: 1.4;
+}
+
+.auth-feedback.error {
+  color: #ff8c8c;
+}
+
+.auth-feedback.success {
+  color: #8ff0b3;
+}
+
+.auth-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 14px;
+  color: #d4dde3;
+}
+
+.auth-toggle-btn {
+  padding: 0;
+  background: transparent;
+  color: #00e5ff;
+  text-decoration: underline;
 }
 
 #page-title {
@@ -749,6 +860,11 @@ button {
   .auth-entry-btn {
     padding: 9px 12px;
     font-size: 12px;
+  }
+
+  .auth-panel {
+    margin-top: 60px;
+    padding: 20px 16px 16px;
   }
 
   .tool-panel label,

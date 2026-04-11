@@ -69,6 +69,7 @@ const authForm = document.getElementById("account-auth-form");
 const authEmailInput = document.getElementById("account-auth-email");
 const authPasswordInput = document.getElementById("account-auth-password");
 const authSubmitBtn = document.getElementById("account-auth-submit-btn");
+const authResetPasswordBtn = document.getElementById("account-reset-password-btn");
 const authFeedback = document.getElementById("account-auth-feedback");
 const authToggleBtn = document.getElementById("account-toggle-btn");
 const authToggleCopy = document.getElementById("account-toggle-copy");
@@ -520,27 +521,32 @@ async function loadCloudStateForUser(user) {
 function setAuthMode(mode) {
   currentAuthMode = mode;
   const isRegister = mode === "register";
+  const isRecovery = mode === "recovery";
 
-  authSubmitBtn.textContent = isRegister ? "Register" : "Sign In";
+  authSubmitBtn.textContent = isRecovery ? "Update Password" : isRegister ? "Register" : "Sign In";
   authToggleCopy.textContent = isRegister ? "Already have an account?" : "Need an account?";
   authToggleBtn.textContent = isRegister ? "Sign In" : "Register";
-  authSessionCopy.textContent = isRegister
-    ? "Create an account or sign in to start saving your Color Optics data across devices."
-    : "Sign in to access your Color Optics account and saved settings.";
-  authPasswordInput.autocomplete = isRegister ? "new-password" : "current-password";
+  authSessionCopy.textContent = isRecovery
+    ? "Enter a new password to finish resetting your Color Optics account."
+    : isRegister
+      ? "Create an account or sign in to start saving your Color Optics data across devices."
+      : "Sign in to access your Color Optics account and saved settings.";
+  authPasswordInput.autocomplete = isRegister || isRecovery ? "new-password" : "current-password";
+  authResetPasswordBtn.classList.toggle("hidden", mode !== "signin");
   setAuthFeedback();
 }
 
 function updateAuthUI(user) {
   currentUser = user;
   const isSignedIn = Boolean(user);
+  const isRecovery = currentAuthMode === "recovery";
   authEntryBtn.textContent = isSignedIn ? "Account" : "Login / Register";
-  authForm.classList.toggle("hidden", isSignedIn);
-  authToggleBtn.classList.toggle("hidden", isSignedIn);
-  authToggleCopy.classList.toggle("hidden", isSignedIn);
-  authSignedInPanel.classList.toggle("hidden", !isSignedIn);
+  authForm.classList.toggle("hidden", isSignedIn && !isRecovery);
+  authToggleBtn.classList.toggle("hidden", isSignedIn || isRecovery);
+  authToggleCopy.classList.toggle("hidden", isSignedIn || isRecovery);
+  authSignedInPanel.classList.toggle("hidden", !isSignedIn || isRecovery);
 
-  if (isSignedIn) {
+  if (isSignedIn && !isRecovery) {
     authUserEmail.textContent = user.email ?? "Signed-in user";
     authSessionCopy.textContent = "Your account is connected. Your settings can now sync with Supabase.";
   } else {
@@ -1100,6 +1106,16 @@ supabaseClient.auth.getSession().then(async ({ data, error }) => {
 
 supabaseClient.auth.onAuthStateChange(async (event, session) => {
   const user = session?.user ?? null;
+
+  if (event === "PASSWORD_RECOVERY") {
+    setCurrentPage("page-6", false);
+    setAuthMode("recovery");
+    updateAuthUI(user);
+    authPasswordInput.value = "";
+    setAuthFeedback("Enter a new password, then select Update Password.", "success");
+    return;
+  }
+
   updateAuthUI(user);
 
   if (event === "SIGNED_IN" && user) {
@@ -1147,18 +1163,31 @@ authForm.addEventListener("submit", async event => {
   const email = authEmailInput.value.trim();
   const password = authPasswordInput.value;
 
-  if (!email || !password) {
+  if (currentAuthMode !== "recovery" && (!email || !password)) {
     setAuthFeedback("Enter an email and password.", "error");
     return;
   }
 
+  if (currentAuthMode === "recovery" && !password) {
+    setAuthFeedback("Enter a new password.", "error");
+    return;
+  }
+
   authSubmitBtn.disabled = true;
-  setAuthFeedback(currentAuthMode === "register" ? "Creating account..." : "Signing in...");
+  setAuthFeedback(
+    currentAuthMode === "register"
+      ? "Creating account..."
+      : currentAuthMode === "recovery"
+        ? "Updating password..."
+        : "Signing in..."
+  );
 
   let result;
 
   if (currentAuthMode === "register") {
     result = await supabaseClient.auth.signUp({ email, password });
+  } else if (currentAuthMode === "recovery") {
+    result = await supabaseClient.auth.updateUser({ password });
   } else {
     result = await supabaseClient.auth.signInWithPassword({ email, password });
   }
@@ -1167,6 +1196,14 @@ authForm.addEventListener("submit", async event => {
 
   if (result.error) {
     setAuthFeedback(result.error.message, "error");
+    return;
+  }
+
+  if (currentAuthMode === "recovery") {
+    authPasswordInput.value = "";
+    setAuthMode("signin");
+    updateAuthUI(result.data.user ?? currentUser);
+    setAuthFeedback("Password updated successfully.", "success");
     return;
   }
 
@@ -1180,16 +1217,55 @@ authForm.addEventListener("submit", async event => {
   updateAuthUI(result.data.user ?? result.data.session?.user ?? null);
 });
 
-authSignoutBtn.addEventListener("click", async () => {
-  const { error } = await supabaseClient.auth.signOut();
+authResetPasswordBtn.addEventListener("click", async () => {
+  const email = authEmailInput.value.trim();
+
+  if (!email) {
+    setAuthFeedback("Enter your email first so we know where to send the reset link.", "error");
+    return;
+  }
+
+  authResetPasswordBtn.disabled = true;
+  setAuthFeedback("Sending reset email...");
+
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}${window.location.pathname}`
+  });
+
+  authResetPasswordBtn.disabled = false;
 
   if (error) {
     setAuthFeedback(error.message, "error");
     return;
   }
 
-  setAuthMode("register");
-  updateAuthUI(null);
+  setAuthFeedback("Password reset email sent. Open the link in your email to choose a new password.", "success");
+});
+
+authSignoutBtn.addEventListener("click", async event => {
+  event.preventDefault();
+  authSignoutBtn.disabled = true;
+  authSignoutBtn.textContent = "Signing Out...";
+  setAuthFeedback("Signing out...");
+
+  try {
+    const { error } = await supabaseClient.auth.signOut({ scope: "local" });
+
+    if (error) {
+      throw error;
+    }
+
+    authForm.reset();
+    setAuthMode("register");
+    updateAuthUI(null);
+    setCurrentPage("page-6", false);
+    setAuthFeedback("Signed out successfully.", "success");
+  } catch (error) {
+    setAuthFeedback(error.message || "Unable to sign out right now.", "error");
+  } finally {
+    authSignoutBtn.disabled = false;
+    authSignoutBtn.textContent = "Sign Out";
+  }
 });
 
 fiberCountSelect.addEventListener("change", () => {

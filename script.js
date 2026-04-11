@@ -93,6 +93,10 @@ const pageOrder = [
 ];
 const SUPABASE_URL = "https://xekhxxodxprripdahwdr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhla2h4eG9keHBycmlwZGFod2RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MjMzOTgsImV4cCI6MjA5MTQ5OTM5OH0.buCrTi2vnG9JQYIwdtCA1jzs0wdocdT_ul4qLoPEoPQ";
+const PRODUCTION_APP_URL = "https://www.coloroptics.co/";
+const AUTH_REDIRECT_URL = window.location.hostname === "localhost"
+  ? `${window.location.origin}/`
+  : PRODUCTION_APP_URL;
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentAuthMode = "register";
 let currentUser = null;
@@ -1229,7 +1233,7 @@ authResetPasswordBtn.addEventListener("click", async () => {
   setAuthFeedback("Sending reset email...");
 
   const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}${window.location.pathname}`
+    redirectTo: AUTH_REDIRECT_URL
   });
 
   authResetPasswordBtn.disabled = false;

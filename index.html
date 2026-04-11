@@ -73,6 +73,59 @@
   </section>
 </div>
 
+<section class="page" id="page-6">
+  <div class="account-shell">
+    <section class="auth-panel account-panel" aria-labelledby="account-page-title">
+      <p class="hero-eyebrow">Account</p>
+      <h2 id="account-page-title">Login or Register</h2>
+      <p id="account-session-copy" class="auth-copy">
+        Create an account or sign in to start saving your Color Optics data across devices.
+      </p>
+
+      <form id="account-auth-form" class="auth-form">
+        <label for="account-auth-email">Email</label>
+        <input id="account-auth-email" type="email" autocomplete="email" required />
+
+        <label for="account-auth-password">Password</label>
+        <input id="account-auth-password" type="password" autocomplete="current-password" minlength="6" required />
+
+        <button id="account-auth-submit-btn" class="auth-submit-btn" type="submit">Register</button>
+      </form>
+
+      <p id="account-auth-feedback" class="auth-feedback" aria-live="polite"></p>
+
+      <div id="account-signed-in-panel" class="auth-signed-in-panel hidden">
+        <p class="auth-signed-in-copy">You are signed in as <strong id="account-user-email"></strong>.</p>
+        <button id="account-signout-btn" class="home-link-btn home-link-btn-secondary auth-signout-btn" type="button">
+          Sign Out
+        </button>
+      </div>
+
+      <div id="account-toggle-row" class="auth-toggle-row">
+        <span id="account-toggle-copy">Already have an account?</span>
+        <button id="account-toggle-btn" class="auth-toggle-btn" type="button">Sign In</button>
+      </div>
+    </section>
+
+    <section class="hero-card account-panel">
+      <p class="hero-eyebrow">Settings</p>
+      <h2>Saved Data</h2>
+      <p class="auth-copy">
+        Your Color Optics selections are saved locally on this device and, when signed in,
+        synced to your account so they can follow you across devices.
+      </p>
+      <ul class="home-list">
+        <li>Fiber, twisted pair, Ethernet, and coax preferences stay with your account</li>
+        <li>Cloud sync loads your saved profile after sign in</li>
+        <li>You can still use the app without an account, but saves stay on that one device</li>
+      </ul>
+      <div class="legal-actions">
+        <button class="home-link-btn home-link-btn-secondary" type="button" data-home-target="page-1">Back to Home</button>
+      </div>
+    </section>
+  </div>
+</section>
+
 <section class="page active" id="page-1">
   <div class="hero-card">
     <p class="hero-eyebrow">Field Reference Suite</p>

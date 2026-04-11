@@ -65,20 +65,17 @@ const coaxDiagramTitle = document.getElementById("coax-diagram-title");
 const coaxDiagram = document.getElementById("coax-diagram");
 const pageTitle = document.getElementById("page-title");
 const authEntryBtn = document.getElementById("auth-entry-btn");
-const authModal = document.getElementById("auth-modal");
-const authModalOverlay = document.getElementById("auth-modal-overlay");
-const authCloseBtn = document.getElementById("auth-close-btn");
-const authForm = document.getElementById("auth-form");
-const authEmailInput = document.getElementById("auth-email");
-const authPasswordInput = document.getElementById("auth-password");
-const authSubmitBtn = document.getElementById("auth-submit-btn");
-const authFeedback = document.getElementById("auth-feedback");
-const authToggleBtn = document.getElementById("auth-toggle-btn");
-const authToggleCopy = document.getElementById("auth-toggle-copy");
-const authSessionCopy = document.getElementById("auth-session-copy");
-const authSignedInPanel = document.getElementById("auth-signed-in-panel");
-const authUserEmail = document.getElementById("auth-user-email");
-const authSignoutBtn = document.getElementById("auth-signout-btn");
+const authForm = document.getElementById("account-auth-form");
+const authEmailInput = document.getElementById("account-auth-email");
+const authPasswordInput = document.getElementById("account-auth-password");
+const authSubmitBtn = document.getElementById("account-auth-submit-btn");
+const authFeedback = document.getElementById("account-auth-feedback");
+const authToggleBtn = document.getElementById("account-toggle-btn");
+const authToggleCopy = document.getElementById("account-toggle-copy");
+const authSessionCopy = document.getElementById("account-session-copy");
+const authSignedInPanel = document.getElementById("account-signed-in-panel");
+const authUserEmail = document.getElementById("account-user-email");
+const authSignoutBtn = document.getElementById("account-signout-btn");
 const pages = Array.from(document.querySelectorAll(".page"));
 const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
 const homeLinkButtons = Array.from(document.querySelectorAll("[data-home-target]"));
@@ -90,7 +87,8 @@ const pageOrder = [
   { id: "page-2", title: "Fiber Color Code" },
   { id: "page-3", title: "Twisted Pair Color Code" },
   { id: "page-4", title: "Ethernet" },
-  { id: "page-5", title: "Coax" }
+  { id: "page-5", title: "Coax" },
+  { id: "page-6", title: "Account" }
 ];
 const SUPABASE_URL = "https://xekhxxodxprripdahwdr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhla2h4eG9keHBycmlwZGFod2RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MjMzOTgsImV4cCI6MjA5MTQ5OTM5OH0.buCrTi2vnG9JQYIwdtCA1jzs0wdocdT_ul4qLoPEoPQ";
@@ -551,17 +549,6 @@ function updateAuthUI(user) {
   }
 }
 
-function openAuthModal() {
-  authModal.classList.remove("hidden");
-  authModal.setAttribute("aria-hidden", "false");
-}
-
-function closeAuthModal() {
-  authModal.classList.add("hidden");
-  authModal.setAttribute("aria-hidden", "true");
-  setAuthFeedback();
-}
-
 function setCurrentPage(pageId, shouldSave = true) {
   const activePage = pageOrder.find(page => page.id === pageId) ?? pageOrder[0];
   currentPageId = activePage.id;
@@ -575,7 +562,6 @@ function setCurrentPage(pageId, shouldSave = true) {
   });
 
   pageTitle.textContent = activePage.title;
-  authEntryBtn.classList.toggle("hidden", activePage.id !== "page-1");
   document.title = activePage.title;
   window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 
@@ -1149,11 +1135,8 @@ homeLinkButtons.forEach(button => {
 });
 
 authEntryBtn.addEventListener("click", () => {
-  openAuthModal();
+  setCurrentPage("page-6");
 });
-
-authCloseBtn.addEventListener("click", closeAuthModal);
-authModalOverlay.addEventListener("click", closeAuthModal);
 
 authToggleBtn.addEventListener("click", () => {
   setAuthMode(currentAuthMode === "register" ? "signin" : "register");

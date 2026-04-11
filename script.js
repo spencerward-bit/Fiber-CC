@@ -459,6 +459,7 @@ function setCurrentPage(pageId, shouldSave = true) {
   pageTitle.textContent = activePage.title;
   authEntryBtn.classList.toggle("hidden", activePage.id !== "page-1");
   document.title = activePage.title;
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 
   if (shouldSave) {
     saveState();
@@ -949,10 +950,24 @@ function configurePairMap(totalPairs) {
   renderPairMap(totalPairs);
 }
 
-function resetApp() {
-  localStorage.removeItem(STORAGE_KEY);
-  applyState(defaultState);
+function resetFiberPage() {
+  configureMap(parseInt(defaultState.fiberCount), defaultState.tubeSize);
+  jumpTubeInput.value = "";
+  jumpFiberInput.value = "";
+  jumpTotalInput.value = "";
+  updateInfoBar();
   window.scrollTo({ top: 0, behavior: "smooth" });
+  saveState();
+}
+
+function resetTwistedPairPage() {
+  configurePairMap(parseInt(defaultState.pairCount));
+  jumpBinderInput.value = "";
+  jumpPairInput.value = "";
+  jumpTotalPairInput.value = "";
+  updatePairInfoBar();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  saveState();
 }
 
 applyState(loadState());
@@ -1063,7 +1078,7 @@ jumpTotalBtn.addEventListener("click", () => {
   selectFiber(target);
 });
 
-resetBtn.addEventListener("click", resetApp);
+resetBtn.addEventListener("click", resetFiberPage);
 
 pairCountSelect.addEventListener("change", () => {
   configurePairMap(parseInt(pairCountSelect.value));
@@ -1133,15 +1148,7 @@ jumpTotalPairBtn.addEventListener("click", () => {
   selectPair(target);
 });
 
-resetPairBtn.addEventListener("click", () => {
-  pairCountSelect.value = defaultState.pairCount;
-  jumpBinderInput.value = "";
-  jumpPairInput.value = "";
-  jumpTotalPairInput.value = "";
-  renderPairMap(parseInt(defaultState.pairCount));
-  updatePairInfoBar();
-  saveState();
-});
+resetPairBtn.addEventListener("click", resetTwistedPairPage);
 
 ethernetCategorySelect.addEventListener("change", () => {
   renderEthernetDiagram(ethernetCatalog[ethernetCategorySelect.value]);

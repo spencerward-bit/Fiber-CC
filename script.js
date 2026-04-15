@@ -77,6 +77,14 @@ const authSessionCopy = document.getElementById("account-session-copy");
 const authSignedInPanel = document.getElementById("account-signed-in-panel");
 const authUserEmail = document.getElementById("account-user-email");
 const authSignoutBtn = document.getElementById("account-signout-btn");
+const accountAccessBadge = document.getElementById("account-access-badge");
+const accountAccessCopy = document.getElementById("account-access-copy");
+const accountAccessDetails = document.getElementById("account-access-details");
+const fiberAccessNote = document.getElementById("fiber-access-note");
+const pairAccessNote = document.getElementById("pair-access-note");
+const ethernetAccessNote = document.getElementById("ethernet-access-note");
+const coaxLockedPanel = document.getElementById("coax-locked-panel");
+const coaxPremiumContent = document.getElementById("coax-premium-content");
 const pages = Array.from(document.querySelectorAll(".page"));
 const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
 const homeLinkButtons = Array.from(document.querySelectorAll("[data-home-target]"));
@@ -98,9 +106,21 @@ const AUTH_REDIRECT_URL = window.location.hostname === "localhost"
   ? `${window.location.origin}/`
   : PRODUCTION_APP_URL;
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const FREE_ACCESS_LIMITS = {
+  maxFiberCable: 48,
+  allowedTubeSizes: [12],
+  maxPairCount: 50,
+  allowedEthernetCategories: ["cat1", "cat2"],
+  coaxEnabled: false
+};
 let currentAuthMode = "register";
 let currentUser = null;
 let isHydratingCloudState = false;
+let currentAccess = {
+  tier: "free",
+  status: "inactive",
+  source: "none"
+};
 
 const pairMajorColors = ["White", "Red", "Black", "Yellow", "Violet"];
 const pairMinorColors = ["Blue", "Orange", "Green", "Brown", "Slate"];
@@ -522,6 +542,243 @@ async function loadCloudStateForUser(user) {
   return data?.state ?? null;
 }
 
+function isPremiumAccess(access = currentAccess) {
+  return access.tier === "premium";
+}
+
+function getValueFromRecord(record, keys) {
+  for (const key of keys) {
+    if (record && record[key] !== undefined && record[key] !== null) {
+      return record[key];
+    }
+  }
+
+  return null;
+}
+
+function parseAccessRecord(record, fallbackSource = "supabase") {
+  if (!record) {
+    return null;
+  }
+
+  const booleanPremium = getValueFromRecord(record, ["is_premium", "premium", "paid", "subscriber"]);
+  const tierValue = getValueFromRecord(record, ["tier", "plan", "access_tier", "membership", "role"]);
+  const statusValue = getValueFromRecord(record, ["status", "subscription_status", "state"]);
+  const sourceValue = getValueFromRecord(record, ["source", "provider", "subscription_source"]);
+
+  const normalizedTier = typeof tierValue === "string" ? tierValue.trim().toLowerCase() : "";
+  const normalizedStatus = typeof statusValue === "string" ? statusValue.trim().toLowerCase() : "";
+
+  const activeStatuses = new Set(["active", "premium", "paid", "trialing", "trial", "subscriber"]);
+  const premiumTiers = new Set(["premium", "pro", "paid", "subscriber", "active"]);
+  const isActiveBoolean = booleanPremium === true || booleanPremium === "true";
+  const isPremiumTier = premiumTiers.has(normalizedTier);
+  const isPremiumStatus = activeStatuses.has(normalizedStatus);
+
+  if (!isActiveBoolean && !isPremiumTier && !isPremiumStatus) {
+    return null;
+  }
+
+  return {
+    tier: "premium",
+    status: normalizedStatus || "active",
+    source: sourceValue || fallbackSource
+  };
+}
+
+async function loadAccessForUser(user) {
+  const metadataSources = [
+    { label: "app metadata", value: parseAccessRecord(user?.app_metadata, "app metadata") },
+    { label: "user metadata", value: parseAccessRecord(user?.user_metadata, "user metadata") }
+  ];
+
+  for (const source of metadataSources) {
+    if (source.value) {
+      return source.value;
+    }
+  }
+
+  const tableCandidates = [
+    { table: "user_access", column: "user_id", source: "user_access" },
+    { table: "subscriptions", column: "user_id", source: "subscriptions" },
+    { table: "user_subscriptions", column: "user_id", source: "user_subscriptions" },
+    { table: "entitlements", column: "user_id", source: "entitlements" },
+    { table: "profiles", column: "id", source: "profiles" }
+  ];
+
+  for (const candidate of tableCandidates) {
+    try {
+      const { data, error } = await supabaseClient
+        .from(candidate.table)
+        .select("*")
+        .eq(candidate.column, user.id)
+        .maybeSingle();
+
+      if (error) {
+        continue;
+      }
+
+      const parsed = parseAccessRecord(data, candidate.source);
+
+      if (parsed) {
+        return parsed;
+      }
+    } catch (error) {
+      console.error(`Unable to read ${candidate.table}:`, error.message);
+    }
+  }
+
+  return {
+    tier: "free",
+    status: user ? "signed_in" : "inactive",
+    source: "default"
+  };
+}
+
+function getAllowedFiberSizes() {
+  return isPremiumAccess() ? cableSizes : cableSizes.filter(size => size <= FREE_ACCESS_LIMITS.maxFiberCable);
+}
+
+function getAllowedTubeSizes(totalFibers) {
+  const allowedByCable = tubeSizes.filter(size => size <= totalFibers);
+  return isPremiumAccess()
+    ? allowedByCable
+    : allowedByCable.filter(size => FREE_ACCESS_LIMITS.allowedTubeSizes.includes(size));
+}
+
+function getAllowedPairCounts() {
+  return isPremiumAccess() ? pairCounts : pairCounts.filter(count => count <= FREE_ACCESS_LIMITS.maxPairCount);
+}
+
+function getAllowedEthernetCategories() {
+  return isPremiumAccess() ? Object.keys(ethernetCatalog) : FREE_ACCESS_LIMITS.allowedEthernetCategories;
+}
+
+function pickClosestAllowedValue(allowedValues, desiredValue) {
+  if (!allowedValues.length) {
+    return desiredValue;
+  }
+
+  const desiredNumber = parseInt(desiredValue);
+
+  if (Number.isNaN(desiredNumber)) {
+    return allowedValues[allowedValues.length - 1];
+  }
+
+  const exactMatch = allowedValues.find(value => value === desiredNumber);
+
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const lowerMatch = [...allowedValues].reverse().find(value => value <= desiredNumber);
+  return lowerMatch ?? allowedValues[0];
+}
+
+function refreshAccountAccessUI() {
+  const premium = isPremiumAccess();
+  accountAccessBadge.textContent = premium ? "Premium Access" : "Free Access";
+  accountAccessBadge.classList.toggle("premium", premium);
+  accountAccessCopy.textContent = premium
+    ? "This account can open the full Color Optics library across supported devices."
+    : "Sign in with a premium-enabled account to unlock the full Color Optics library.";
+  accountAccessDetails.textContent = premium
+    ? `Status: ${currentAccess.status}. Source: ${currentAccess.source}.`
+    : "Free access includes Fiber up to 48ct with 12ct tubes, Twisted Pair up to 50 pair, Ethernet CAT 1 and CAT 2, and no Coax access.";
+}
+
+function refreshFiberControls(accessMessage = "") {
+  const allowedFiberSizes = getAllowedFiberSizes();
+  const clampedFiberCount = pickClosestAllowedValue(allowedFiberSizes, fiberCountSelect.value);
+
+  Array.from(fiberCountSelect.options).forEach(option => {
+    const value = parseInt(option.value);
+    const allowed = allowedFiberSizes.includes(value);
+    option.disabled = !allowed;
+    option.hidden = !allowed;
+  });
+
+  fiberCountSelect.value = String(clampedFiberCount);
+  syncTubeSizeOptions(clampedFiberCount, tubeSizeSelect.value);
+
+  if (isPremiumAccess()) {
+    fiberAccessNote.classList.add("hidden");
+    fiberAccessNote.textContent = "";
+    return;
+  }
+
+  fiberAccessNote.classList.remove("hidden");
+  fiberAccessNote.textContent = accessMessage || "Free access includes Fiber cables up to 48ct and 12ct tubes. Sign in with premium access to unlock larger cable and tube sizes.";
+}
+
+function refreshPairControls(accessMessage = "") {
+  const allowedPairCounts = getAllowedPairCounts();
+  const clampedPairCount = pickClosestAllowedValue(allowedPairCounts, pairCountSelect.value);
+
+  Array.from(pairCountSelect.options).forEach(option => {
+    const value = parseInt(option.value);
+    const allowed = allowedPairCounts.includes(value);
+    option.disabled = !allowed;
+    option.hidden = !allowed;
+  });
+
+  pairCountSelect.value = String(clampedPairCount);
+
+  if (isPremiumAccess()) {
+    pairAccessNote.classList.add("hidden");
+    pairAccessNote.textContent = "";
+    return;
+  }
+
+  pairAccessNote.classList.remove("hidden");
+  pairAccessNote.textContent = accessMessage || "Free access includes Twisted Pair references up to 50 pair. Premium unlocks the larger binder groups.";
+}
+
+function refreshEthernetControls(accessMessage = "") {
+  const allowedCategories = getAllowedEthernetCategories();
+  const currentCategory = allowedCategories.includes(ethernetCategorySelect.value)
+    ? ethernetCategorySelect.value
+    : allowedCategories[0];
+
+  Array.from(ethernetCategorySelect.options).forEach(option => {
+    const allowed = allowedCategories.includes(option.value);
+    option.disabled = !allowed;
+    option.hidden = !allowed;
+  });
+
+  ethernetCategorySelect.value = currentCategory;
+
+  if (isPremiumAccess()) {
+    ethernetAccessNote.classList.add("hidden");
+    ethernetAccessNote.textContent = "";
+    return;
+  }
+
+  ethernetAccessNote.classList.remove("hidden");
+  ethernetAccessNote.textContent = accessMessage || "Free access includes CAT 1 and CAT 2 only. Premium unlocks the full Ethernet category library.";
+}
+
+function refreshCoaxAccessUI() {
+  const premium = isPremiumAccess();
+  coaxLockedPanel.classList.toggle("hidden", premium);
+  coaxPremiumContent.classList.toggle("hidden", !premium);
+}
+
+function applyAccessRules() {
+  refreshAccountAccessUI();
+  refreshFiberControls();
+  refreshPairControls();
+  refreshEthernetControls();
+  refreshCoaxAccessUI();
+
+  renderMap(parseInt(fiberCountSelect.value));
+  updateInfoBar();
+  renderPairMap(parseInt(pairCountSelect.value));
+  updatePairInfoBar();
+  renderEthernetDiagram(ethernetCatalog[ethernetCategorySelect.value] ?? ethernetCatalog.cat1);
+  renderCoaxDiagram(coaxCatalog[coaxTypeSelect.value] ?? coaxCatalog.rg59);
+}
+
 function setAuthMode(mode) {
   currentAuthMode = mode;
   const isRegister = mode === "register";
@@ -629,11 +886,12 @@ function getTubeRibbonMarkup(tubeNumber) {
 
 function syncTubeSizeOptions(totalFibers, preferredTubeSize = tubeSizeSelect.value) {
   const options = Array.from(tubeSizeSelect.options);
-  let fallbackValue = options[0].value;
+  const allowedTubeSizes = getAllowedTubeSizes(totalFibers);
+  let fallbackValue = String(allowedTubeSizes[0] ?? options[0].value);
 
   options.forEach(option => {
     const optionValue = parseInt(option.value);
-    const isValid = optionValue <= totalFibers;
+    const isValid = allowedTubeSizes.includes(optionValue);
 
     option.disabled = !isValid;
     option.hidden = !isValid;
@@ -1029,39 +1287,52 @@ function restoreSavedSelection(selectedTotal) {
 }
 
 function applyState(state) {
-  const totalFibers = parseInt(state.fiberCount);
-  const totalPairs = parseInt(state.pairCount);
+  const allowedFiberSizes = getAllowedFiberSizes();
+  const allowedPairOptions = getAllowedPairCounts();
+  const allowedEthernetCategories = getAllowedEthernetCategories();
+  const totalFibers = pickClosestAllowedValue(allowedFiberSizes, state.fiberCount);
+  const totalPairs = pickClosestAllowedValue(allowedPairOptions, state.pairCount);
+  const ethernetCategory = allowedEthernetCategories.includes(state.ethernetCategory)
+    ? state.ethernetCategory
+    : allowedEthernetCategories[0];
+  const nextCoaxType = coaxCatalog[state.coaxType] ? state.coaxType : defaultState.coaxType;
 
   setCurrentPage(state.currentPage, false);
-  fiberCountSelect.value = state.fiberCount;
+  fiberCountSelect.value = String(totalFibers);
   jumpTubeInput.value = state.jumpTube;
   jumpFiberInput.value = state.jumpFiber;
   jumpTotalInput.value = state.jumpTotal;
-  pairCountSelect.value = state.pairCount;
+  pairCountSelect.value = String(totalPairs);
   jumpBinderInput.value = state.jumpBinder;
   jumpPairInput.value = state.jumpPair;
   jumpTotalPairInput.value = state.jumpTotalPair;
-  ethernetCategorySelect.value = state.ethernetCategory;
-  coaxTypeSelect.value = state.coaxType;
+  ethernetCategorySelect.value = ethernetCategory;
+  coaxTypeSelect.value = nextCoaxType;
 
   syncTubeSizeOptions(totalFibers, state.tubeSize);
+  refreshFiberControls();
+  refreshPairControls();
+  refreshEthernetControls();
+  refreshCoaxAccessUI();
   renderMap(totalFibers);
   restoreSavedSelection(state.selectedTotal);
   renderPairMap(totalPairs);
   restoreSavedPairSelection(state.selectedTotalPair);
-  renderEthernetDiagram(ethernetCatalog[state.ethernetCategory] ?? ethernetCatalog.cat1);
-  renderCoaxDiagram(coaxCatalog[state.coaxType] ?? coaxCatalog.rg59);
+  renderEthernetDiagram(ethernetCatalog[ethernetCategory] ?? ethernetCatalog.cat1);
+  renderCoaxDiagram(coaxCatalog[nextCoaxType] ?? coaxCatalog.rg59);
 }
 
 function configureMap(totalFibers, preferredTubeSize) {
-  fiberCountSelect.value = String(totalFibers);
-  syncTubeSizeOptions(totalFibers, preferredTubeSize);
-  renderMap(totalFibers);
+  const clampedFiberCount = pickClosestAllowedValue(getAllowedFiberSizes(), totalFibers);
+  fiberCountSelect.value = String(clampedFiberCount);
+  syncTubeSizeOptions(clampedFiberCount, preferredTubeSize);
+  renderMap(clampedFiberCount);
 }
 
 function configurePairMap(totalPairs) {
-  pairCountSelect.value = String(totalPairs);
-  renderPairMap(totalPairs);
+  const clampedPairCount = pickClosestAllowedValue(getAllowedPairCounts(), totalPairs);
+  pairCountSelect.value = String(clampedPairCount);
+  renderPairMap(clampedPairCount);
 }
 
 function resetFiberPage() {
@@ -1086,6 +1357,7 @@ function resetTwistedPairPage() {
 
 applyState(loadState());
 setAuthMode("register");
+refreshAccountAccessUI();
 
 supabaseClient.auth.getSession().then(async ({ data, error }) => {
   if (error) {
@@ -1095,6 +1367,10 @@ supabaseClient.auth.getSession().then(async ({ data, error }) => {
 
   const user = data.session?.user ?? null;
   updateAuthUI(user);
+  currentAccess = user
+    ? await loadAccessForUser(user)
+    : { tier: "free", status: "inactive", source: "default" };
+  applyAccessRules();
 
   if (user) {
     const cloudState = await loadCloudStateForUser(user);
@@ -1121,6 +1397,10 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
   }
 
   updateAuthUI(user);
+  currentAccess = user
+    ? await loadAccessForUser(user)
+    : { tier: "free", status: "inactive", source: "default" };
+  applyAccessRules();
 
   if (event === "SIGNED_IN" && user) {
     const cloudState = await loadCloudStateForUser(user);
@@ -1304,10 +1584,24 @@ jumpBtn.addEventListener("click", () => {
     return;
   }
 
+  if (!isPremiumAccess() && fiber > 12) {
+    fiberAccessNote.classList.remove("hidden");
+    fiberAccessNote.textContent = "Free access only includes 12ct tubes. Premium unlocks larger tube sizes.";
+    alert("Free access only includes 12ct tubes.");
+    return;
+  }
+
   const nextTubeSize = findSmallestSizeAtLeast(tubeSizes, fiber);
 
   if (!nextTubeSize) {
     alert("That fiber number is larger than the available tube sizes.");
+    return;
+  }
+
+  if (!isPremiumAccess() && !FREE_ACCESS_LIMITS.allowedTubeSizes.includes(nextTubeSize)) {
+    fiberAccessNote.classList.remove("hidden");
+    fiberAccessNote.textContent = "Free access only includes 12ct tubes. Premium unlocks larger tube sizes.";
+    alert("That jump requires a premium tube size.");
     return;
   }
 
@@ -1316,6 +1610,13 @@ jumpBtn.addEventListener("click", () => {
 
   if (!nextCableSize) {
     alert("That tube and fiber combination is larger than the available cable sizes.");
+    return;
+  }
+
+  if (!isPremiumAccess() && requiredTotal > FREE_ACCESS_LIMITS.maxFiberCable) {
+    fiberAccessNote.classList.remove("hidden");
+    fiberAccessNote.textContent = "Free access includes Fiber cables up to 48ct. Premium unlocks larger cable counts.";
+    alert("That jump requires premium Fiber access.");
     return;
   }
 
@@ -1346,6 +1647,13 @@ jumpTotalBtn.addEventListener("click", () => {
 
   if (!nextCableSize) {
     alert("That total fiber number is larger than the available cable sizes.");
+    return;
+  }
+
+  if (!isPremiumAccess() && total > FREE_ACCESS_LIMITS.maxFiberCable) {
+    fiberAccessNote.classList.remove("hidden");
+    fiberAccessNote.textContent = "Free access includes Fiber cables up to 48ct. Premium unlocks larger cable counts.";
+    alert("That total fiber number requires premium Fiber access.");
     return;
   }
 
@@ -1391,6 +1699,13 @@ jumpPairBtn.addEventListener("click", () => {
     return;
   }
 
+  if (!isPremiumAccess() && totalPair > FREE_ACCESS_LIMITS.maxPairCount) {
+    pairAccessNote.classList.remove("hidden");
+    pairAccessNote.textContent = "Free access includes Twisted Pair references up to 50 pair. Premium unlocks the larger binder groups.";
+    alert("That jump requires premium Twisted Pair access.");
+    return;
+  }
+
   configurePairMap(nextPairCount);
 
   const target = document.querySelector(
@@ -1417,6 +1732,13 @@ jumpTotalPairBtn.addEventListener("click", () => {
 
   if (!nextPairCount) {
     alert("That total pair number is larger than the available pair counts.");
+    return;
+  }
+
+  if (!isPremiumAccess() && totalPair > FREE_ACCESS_LIMITS.maxPairCount) {
+    pairAccessNote.classList.remove("hidden");
+    pairAccessNote.textContent = "Free access includes Twisted Pair references up to 50 pair. Premium unlocks the larger binder groups.";
+    alert("That total pair number requires premium Twisted Pair access.");
     return;
   }
 

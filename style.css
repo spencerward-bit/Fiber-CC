@@ -142,6 +142,45 @@ body {
   color: #8ff0b3;
 }
 
+.account-access-card {
+  margin: 0 0 16px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid #1f2a31;
+  background: rgba(8, 14, 18, 0.82);
+}
+
+.account-access-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.account-access-badge.premium {
+  background: rgba(0, 229, 255, 0.14);
+  border-color: rgba(0, 229, 255, 0.28);
+  color: #7ef2ff;
+}
+
+.account-access-copy,
+.account-access-details {
+  margin: 12px 0 0;
+  color: #d4dde3;
+  line-height: 1.5;
+}
+
+.account-access-details {
+  color: #8ea3b3;
+  font-size: 14px;
+}
+
 .auth-toggle-row {
   display: flex;
   flex-wrap: wrap;
@@ -181,6 +220,38 @@ body {
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(20, 28, 36, 0.95), rgba(10, 14, 18, 0.95));
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.premium-note,
+.premium-locked-panel {
+  max-width: 980px;
+  margin: 0 auto 12px;
+  padding: 18px;
+  border: 1px solid rgba(0, 229, 255, 0.18);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(12, 22, 30, 0.96), rgba(8, 14, 18, 0.96));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.premium-note {
+  color: #d4dde3;
+  line-height: 1.5;
+}
+
+.premium-locked-panel h2 {
+  margin: 0 0 10px;
+}
+
+.premium-locked-panel p {
+  margin: 0;
+  max-width: 42rem;
+  color: #d4dde3;
+  line-height: 1.6;
+}
+
+#coax-premium-content.hidden,
+#coax-locked-panel.hidden {
+  display: none !important;
 }
 
 .ethernet-layout {

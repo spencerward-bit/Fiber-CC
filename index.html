@@ -115,6 +115,16 @@
         Your Color Optics selections are saved locally on this device and, when signed in,
         synced to your account so they can follow you across devices.
       </p>
+      <div class="account-access-card">
+        <span id="account-access-badge" class="account-access-badge">Free Access</span>
+        <p id="account-access-copy" class="account-access-copy">
+          Sign in with a premium-enabled account to unlock the full Color Optics library.
+        </p>
+        <p id="account-access-details" class="account-access-details">
+          Free access includes Fiber up to 48ct with 12ct tubes, Twisted Pair up to 50 pair,
+          Ethernet CAT 1 and CAT 2, and no Coax access.
+        </p>
+      </div>
       <ul class="home-list">
         <li>Fiber, twisted pair, Ethernet, and coax preferences stay with your account</li>
         <li>Cloud sync loads your saved profile after sign in</li>
@@ -244,6 +254,8 @@
     </select>
   </div>
 
+  <div id="fiber-access-note" class="premium-note hidden"></div>
+
   <div id="quick-jump">
     <label for="jump-tube">Tube</label>
     <input type="number" id="jump-tube" min="1">
@@ -279,6 +291,8 @@
       <option value="600">600 Pair</option>
     </select>
   </div>
+
+  <div id="pair-access-note" class="premium-note hidden"></div>
 
   <div id="pair-jump">
     <label for="jump-binder">Binder</label>
@@ -322,6 +336,8 @@
     </select>
   </div>
 
+  <div id="ethernet-access-note" class="premium-note hidden"></div>
+
   <div class="ethernet-layout">
     <section class="ethernet-panel">
       <p class="hero-eyebrow">Reference</p>
@@ -355,49 +371,61 @@
 </section>
 
 <section class="page" id="page-5">
-  <div class="tool-panel">
-    <label for="coax-type">Coax Cable Type</label>
-    <select id="coax-type">
-      <option value="rg59">RG-59</option>
-      <option value="rg6">RG-6</option>
-      <option value="rg6qs">RG-6 Quad Shield</option>
-      <option value="rg11">RG-11</option>
-      <option value="rg58">RG-58</option>
-      <option value="rg8">RG-8</option>
-      <option value="rg174">RG-174</option>
-      <option value="hardline500">0.500 Hardline</option>
-    </select>
+  <div id="coax-locked-panel" class="premium-locked-panel hidden">
+    <p class="hero-eyebrow">Premium Required</p>
+    <h2>Coax Reference Is Locked</h2>
+    <p>
+      Free access does not include the Coax page. Sign in with a premium-enabled account to unlock
+      coax cable reference charts, distances, shielding, and connector information.
+    </p>
+    <button class="home-link-btn" type="button" data-home-target="page-6">View Account</button>
   </div>
 
-  <div class="ethernet-layout">
-    <section class="ethernet-panel">
-      <p class="hero-eyebrow">Reference</p>
-      <h2 id="coax-title">RG-59</h2>
-      <p id="coax-summary"></p>
+  <div id="coax-premium-content">
+    <div class="tool-panel">
+      <label for="coax-type">Coax Cable Type</label>
+      <select id="coax-type">
+        <option value="rg59">RG-59</option>
+        <option value="rg6">RG-6</option>
+        <option value="rg6qs">RG-6 Quad Shield</option>
+        <option value="rg11">RG-11</option>
+        <option value="rg58">RG-58</option>
+        <option value="rg8">RG-8</option>
+        <option value="rg174">RG-174</option>
+        <option value="hardline500">0.500 Hardline</option>
+      </select>
+    </div>
 
-      <div class="ethernet-stats">
-        <article class="ethernet-stat-card">
-          <span class="ethernet-stat-label">Data Capacity</span>
-          <strong id="coax-data-rate"></strong>
-        </article>
-        <article class="ethernet-stat-card">
-          <span class="ethernet-stat-label">Bandwidth</span>
-          <strong id="coax-bandwidth"></strong>
-        </article>
-        <article class="ethernet-stat-card">
-          <span class="ethernet-stat-label">Distance</span>
-          <strong id="coax-distance"></strong>
-        </article>
-      </div>
+    <div class="ethernet-layout">
+      <section class="ethernet-panel">
+        <p class="hero-eyebrow">Reference</p>
+        <h2 id="coax-title">RG-59</h2>
+        <p id="coax-summary"></p>
 
-      <p id="coax-note" class="ethernet-note"></p>
-    </section>
+        <div class="ethernet-stats">
+          <article class="ethernet-stat-card">
+            <span class="ethernet-stat-label">Data Capacity</span>
+            <strong id="coax-data-rate"></strong>
+          </article>
+          <article class="ethernet-stat-card">
+            <span class="ethernet-stat-label">Bandwidth</span>
+            <strong id="coax-bandwidth"></strong>
+          </article>
+          <article class="ethernet-stat-card">
+            <span class="ethernet-stat-label">Distance</span>
+            <strong id="coax-distance"></strong>
+          </article>
+        </div>
 
-    <section class="ethernet-panel">
-      <p class="hero-eyebrow">Simple Wiring Diagram</p>
-      <h3 id="coax-diagram-title">75 Ohm Drop Cable Layout</h3>
-      <div id="coax-diagram" class="coax-diagram" aria-live="polite"></div>
-    </section>
+        <p id="coax-note" class="ethernet-note"></p>
+      </section>
+
+      <section class="ethernet-panel">
+        <p class="hero-eyebrow">Simple Wiring Diagram</p>
+        <h3 id="coax-diagram-title">75 Ohm Drop Cable Layout</h3>
+        <div id="coax-diagram" class="coax-diagram" aria-live="polite"></div>
+      </section>
+    </div>
   </div>
 </section>
 

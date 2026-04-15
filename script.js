@@ -123,6 +123,7 @@ const FREE_ACCESS_LIMITS = {
 let currentAuthMode = "register";
 let currentUser = null;
 let isHydratingCloudState = false;
+let isSigningOut = false;
 let currentAccess = {
   tier: "free",
   status: "inactive",
@@ -795,6 +796,19 @@ function applyAccessRules() {
   renderCoaxDiagram(coaxCatalog[coaxTypeSelect.value] ?? coaxCatalog.rg59);
 }
 
+function finalizeSignOutUI(message = "Signed out successfully.") {
+  isSigningOut = false;
+  currentAccess = { tier: "free", status: "inactive", source: "default" };
+  authForm.reset();
+  setAuthMode("register");
+  updateAuthUI(null);
+  applyAccessRules();
+  setCurrentPage("page-6", false);
+  setAuthFeedback(message, "success");
+  authSignoutBtn.disabled = false;
+  authSignoutBtn.textContent = "Sign Out";
+}
+
 function setAuthMode(mode) {
   currentAuthMode = mode;
   const isRegister = mode === "register";
@@ -1434,7 +1448,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
   }
 
   if (event === "SIGNED_OUT") {
-    setAuthFeedback("Signed out successfully.", "success");
+    finalizeSignOutUI("Signed out successfully.");
   }
 });
 
@@ -1553,25 +1567,51 @@ authResetPasswordBtn.addEventListener("click", async () => {
 
 authSignoutBtn.addEventListener("click", async event => {
   event.preventDefault();
+  if (isSigningOut) {
+    return;
+  }
+
+  isSigningOut = true;
   authSignoutBtn.disabled = true;
   authSignoutBtn.textContent = "Signing Out...";
   setAuthFeedback("Signing out...");
 
   try {
-    const { error } = await supabaseClient.auth.signOut({ scope: "local" });
+    const signOutResult = await Promise.race([
+      supabaseClient.auth.signOut({ scope: "local" }),
+      new Promise(resolve => {
+        window.setTimeout(() => resolve({ timeout: true }), 5000);
+      })
+    ]);
+
+    if (signOutResult?.timeout) {
+      finalizeSignOutUI("Signed out locally. If the session reappears, refresh the page once.");
+      return;
+    }
+
+    if (signOutResult?.error) {
+      throw signOutResult.error;
+    }
+
+    if (!isSigningOut) {
+      return;
+    }
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+
+    if (!sessionData.session) {
+      finalizeSignOutUI("Signed out successfully.");
+      return;
+    }
+
+    const { error } = await supabaseClient.auth.signOut({ scope: "global" });
 
     if (error) {
       throw error;
     }
-
-    authForm.reset();
-    setAuthMode("register");
-    updateAuthUI(null);
-    setCurrentPage("page-6", false);
-    setAuthFeedback("Signed out successfully.", "success");
   } catch (error) {
+    isSigningOut = false;
     setAuthFeedback(error.message || "Unable to sign out right now.", "error");
-  } finally {
     authSignoutBtn.disabled = false;
     authSignoutBtn.textContent = "Sign Out";
   }

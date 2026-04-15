@@ -181,6 +181,24 @@ body {
   font-size: 14px;
 }
 
+.account-subscription-card {
+  margin: 0 0 16px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 229, 255, 0.18);
+  background: linear-gradient(180deg, rgba(12, 22, 30, 0.96), rgba(8, 14, 18, 0.96));
+}
+
+.account-subscription-card h3 {
+  margin: 0 0 8px;
+}
+
+.account-subscription-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 .auth-toggle-row {
   display: flex;
   flex-wrap: wrap;
@@ -236,6 +254,14 @@ body {
 .premium-note {
   color: #d4dde3;
   line-height: 1.5;
+}
+
+.premium-note > div {
+  margin-bottom: 12px;
+}
+
+.premium-note-btn {
+  margin-top: 0;
 }
 
 .premium-locked-panel h2 {

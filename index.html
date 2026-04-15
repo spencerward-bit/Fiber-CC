@@ -125,6 +125,26 @@
           Ethernet CAT 1 and CAT 2, and no Coax access.
         </p>
       </div>
+      <div class="account-subscription-card">
+        <p class="hero-eyebrow">Premium Plan</p>
+        <h3 id="account-plan-title">Color Optics Premium</h3>
+        <p id="account-plan-copy" class="account-access-copy">
+          Unlock the full Fiber, Twisted Pair, Ethernet, and Coax reference library across the web app
+          and future mobile apps when signed in.
+        </p>
+        <ul class="home-list">
+          <li>Full Fiber cable sizes and tube sizes</li>
+          <li>Full Twisted Pair binder counts</li>
+          <li>Full Ethernet category library</li>
+          <li>Full Coax reference access</li>
+        </ul>
+        <div class="account-subscription-actions">
+          <button id="account-subscribe-btn" class="home-link-btn" type="button">Subscribe on Web Coming Next</button>
+          <p id="account-subscribe-note" class="account-access-details">
+            Stripe billing will connect here next. For now, this section shows your current access level for testing.
+          </p>
+        </div>
+      </div>
       <ul class="home-list">
         <li>Fiber, twisted pair, Ethernet, and coax preferences stay with your account</li>
         <li>Cloud sync loads your saved profile after sign in</li>
@@ -254,7 +274,10 @@
     </select>
   </div>
 
-  <div id="fiber-access-note" class="premium-note hidden"></div>
+  <div id="fiber-access-note" class="premium-note hidden">
+    <div id="fiber-access-copy"></div>
+    <button class="home-link-btn premium-note-btn" type="button" data-home-target="page-6">View Premium Access</button>
+  </div>
 
   <div id="quick-jump">
     <label for="jump-tube">Tube</label>
@@ -292,7 +315,10 @@
     </select>
   </div>
 
-  <div id="pair-access-note" class="premium-note hidden"></div>
+  <div id="pair-access-note" class="premium-note hidden">
+    <div id="pair-access-copy"></div>
+    <button class="home-link-btn premium-note-btn" type="button" data-home-target="page-6">View Premium Access</button>
+  </div>
 
   <div id="pair-jump">
     <label for="jump-binder">Binder</label>
@@ -336,7 +362,10 @@
     </select>
   </div>
 
-  <div id="ethernet-access-note" class="premium-note hidden"></div>
+  <div id="ethernet-access-note" class="premium-note hidden">
+    <div id="ethernet-access-copy"></div>
+    <button class="home-link-btn premium-note-btn" type="button" data-home-target="page-6">View Premium Access</button>
+  </div>
 
   <div class="ethernet-layout">
     <section class="ethernet-panel">

@@ -80,9 +80,16 @@ const authSignoutBtn = document.getElementById("account-signout-btn");
 const accountAccessBadge = document.getElementById("account-access-badge");
 const accountAccessCopy = document.getElementById("account-access-copy");
 const accountAccessDetails = document.getElementById("account-access-details");
+const accountPlanTitle = document.getElementById("account-plan-title");
+const accountPlanCopy = document.getElementById("account-plan-copy");
+const accountSubscribeBtn = document.getElementById("account-subscribe-btn");
+const accountSubscribeNote = document.getElementById("account-subscribe-note");
 const fiberAccessNote = document.getElementById("fiber-access-note");
+const fiberAccessCopy = document.getElementById("fiber-access-copy");
 const pairAccessNote = document.getElementById("pair-access-note");
+const pairAccessCopy = document.getElementById("pair-access-copy");
 const ethernetAccessNote = document.getElementById("ethernet-access-note");
+const ethernetAccessCopy = document.getElementById("ethernet-access-copy");
 const coaxLockedPanel = document.getElementById("coax-locked-panel");
 const coaxPremiumContent = document.getElementById("coax-premium-content");
 const pages = Array.from(document.querySelectorAll(".page"));
@@ -685,6 +692,15 @@ function refreshAccountAccessUI() {
   accountAccessDetails.textContent = premium
     ? `Status: ${currentAccess.status}. Source: ${currentAccess.source}.`
     : "Free access includes Fiber up to 48ct with 12ct tubes, Twisted Pair up to 50 pair, Ethernet CAT 1 and CAT 2, and no Coax access.";
+  accountPlanTitle.textContent = premium ? "Premium Active" : "Color Optics Premium";
+  accountPlanCopy.textContent = premium
+    ? "This account is already unlocked for the full reference library across supported devices when signed in."
+    : "Unlock the full Fiber, Twisted Pair, Ethernet, and Coax reference library across the web app and future mobile apps when signed in.";
+  accountSubscribeBtn.textContent = premium ? "Premium Enabled" : "Subscribe on Web Coming Next";
+  accountSubscribeBtn.disabled = premium;
+  accountSubscribeNote.textContent = premium
+    ? "Web billing setup is the next phase. Your account is already showing premium access for testing."
+    : "Stripe billing will connect here next. For now, this section shows your current access level for testing.";
 }
 
 function refreshFiberControls(accessMessage = "") {
@@ -703,12 +719,12 @@ function refreshFiberControls(accessMessage = "") {
 
   if (isPremiumAccess()) {
     fiberAccessNote.classList.add("hidden");
-    fiberAccessNote.textContent = "";
+    fiberAccessCopy.textContent = "";
     return;
   }
 
   fiberAccessNote.classList.remove("hidden");
-  fiberAccessNote.textContent = accessMessage || "Free access includes Fiber cables up to 48ct and 12ct tubes. Sign in with premium access to unlock larger cable and tube sizes.";
+  fiberAccessCopy.textContent = accessMessage || "Free access includes Fiber cables up to 48ct and 12ct tubes. Sign in with premium access to unlock larger cable and tube sizes.";
 }
 
 function refreshPairControls(accessMessage = "") {
@@ -726,12 +742,12 @@ function refreshPairControls(accessMessage = "") {
 
   if (isPremiumAccess()) {
     pairAccessNote.classList.add("hidden");
-    pairAccessNote.textContent = "";
+    pairAccessCopy.textContent = "";
     return;
   }
 
   pairAccessNote.classList.remove("hidden");
-  pairAccessNote.textContent = accessMessage || "Free access includes Twisted Pair references up to 50 pair. Premium unlocks the larger binder groups.";
+  pairAccessCopy.textContent = accessMessage || "Free access includes Twisted Pair references up to 50 pair. Premium unlocks the larger binder groups.";
 }
 
 function refreshEthernetControls(accessMessage = "") {
@@ -750,12 +766,12 @@ function refreshEthernetControls(accessMessage = "") {
 
   if (isPremiumAccess()) {
     ethernetAccessNote.classList.add("hidden");
-    ethernetAccessNote.textContent = "";
+    ethernetAccessCopy.textContent = "";
     return;
   }
 
   ethernetAccessNote.classList.remove("hidden");
-  ethernetAccessNote.textContent = accessMessage || "Free access includes CAT 1 and CAT 2 only. Premium unlocks the full Ethernet category library.";
+  ethernetAccessCopy.textContent = accessMessage || "Free access includes CAT 1 and CAT 2 only. Premium unlocks the full Ethernet category library.";
 }
 
 function refreshCoaxAccessUI() {
@@ -1436,6 +1452,15 @@ homeLinkButtons.forEach(button => {
 
 authEntryBtn.addEventListener("click", () => {
   setCurrentPage("page-6");
+});
+
+accountSubscribeBtn.addEventListener("click", () => {
+  if (isPremiumAccess()) {
+    setAuthFeedback("This account already has premium access.", "success");
+    return;
+  }
+
+  setAuthFeedback("Stripe web checkout is the next phase. This account page is now ready for the subscribe button to connect there.", "success");
 });
 
 authToggleBtn.addEventListener("click", () => {

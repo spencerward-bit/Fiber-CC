@@ -827,6 +827,7 @@ function clearSupabaseSessionStorage() {
 function finalizeSignOutUI(message = "Signed out successfully.") {
   isSigningOut = false;
   currentAccess = { tier: "free", status: "inactive", source: "default" };
+  clearSupabaseSessionStorage();
   authForm.reset();
   setAuthMode("register");
   updateAuthUI(null);

@@ -112,6 +112,7 @@ const PRODUCTION_APP_URL = "https://www.coloroptics.co/";
 const AUTH_REDIRECT_URL = window.location.hostname === "localhost"
   ? `${window.location.origin}/`
   : PRODUCTION_APP_URL;
+const SUPABASE_PROJECT_REF = new URL(SUPABASE_URL).hostname.split(".")[0];
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const FREE_ACCESS_LIMITS = {
   maxFiberCable: 48,
@@ -794,6 +795,33 @@ function applyAccessRules() {
   updatePairInfoBar();
   renderEthernetDiagram(ethernetCatalog[ethernetCategorySelect.value] ?? ethernetCatalog.cat1);
   renderCoaxDiagram(coaxCatalog[coaxTypeSelect.value] ?? coaxCatalog.rg59);
+}
+
+function clearSupabaseSessionStorage() {
+  const exactKeys = [
+    `sb-${SUPABASE_PROJECT_REF}-auth-token`,
+    `sb-${SUPABASE_PROJECT_REF}-auth-token-code-verifier`
+  ];
+
+  [window.localStorage, window.sessionStorage].forEach(storage => {
+    exactKeys.forEach(key => {
+      try {
+        storage.removeItem(key);
+      } catch (error) {
+        console.error(`Unable to remove ${key}:`, error.message);
+      }
+    });
+
+    try {
+      Object.keys(storage).forEach(key => {
+        if (key.startsWith(`sb-${SUPABASE_PROJECT_REF}-`)) {
+          storage.removeItem(key);
+        }
+      });
+    } catch (error) {
+      console.error("Unable to sweep Supabase auth storage:", error.message);
+    }
+  });
 }
 
 function finalizeSignOutUI(message = "Signed out successfully.") {
@@ -1585,6 +1613,7 @@ authSignoutBtn.addEventListener("click", async event => {
     ]);
 
     if (signOutResult?.timeout) {
+      clearSupabaseSessionStorage();
       finalizeSignOutUI("Signed out locally. If the session reappears, refresh the page once.");
       return;
     }

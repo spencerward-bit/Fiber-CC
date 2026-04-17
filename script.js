@@ -121,7 +121,7 @@ const FREE_ACCESS_LIMITS = {
   allowedEthernetCategories: ["cat1", "cat2"],
   coaxEnabled: false
 };
-let currentAuthMode = "register";
+let currentAuthMode = "signin";
 let currentUser = null;
 let isHydratingCloudState = false;
 let isSigningOut = false;
@@ -1414,7 +1414,7 @@ function resetTwistedPairPage() {
 }
 
 applyState(loadState());
-setAuthMode("register");
+setAuthMode("signin");
 refreshAccountAccessUI();
 
 supabaseClient.auth.getSession().then(async ({ data, error }) => {

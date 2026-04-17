@@ -1,0 +1,8 @@
+{
+  "name": "color-optics",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "stripe": "^18.2.0"
+  }
+}

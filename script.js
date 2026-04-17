@@ -698,11 +698,11 @@ function refreshAccountAccessUI() {
   accountPlanCopy.textContent = premium
     ? "This account is already unlocked for the full reference library across supported devices when signed in."
     : "Unlock the full Fiber, Twisted Pair, Ethernet, and Coax reference library across the web app and future mobile apps when signed in.";
-  accountSubscribeBtn.textContent = premium ? "Premium Enabled" : "Subscribe on Web Coming Next";
+  accountSubscribeBtn.textContent = premium ? "Premium Enabled" : "Subscribe with Stripe";
   accountSubscribeBtn.disabled = premium;
   accountSubscribeNote.textContent = premium
-    ? "Web billing setup is the next phase. Your account is already showing premium access for testing."
-    : "Stripe billing will connect here next. For now, this section shows your current access level for testing.";
+    ? "This account already has premium access."
+    : "Secure Stripe checkout will open here for web subscriptions.";
 }
 
 function refreshFiberControls(accessMessage = "") {
@@ -836,6 +836,28 @@ function finalizeSignOutUI(message = "Signed out successfully.") {
   setAuthFeedback(message, "success");
   authSignoutBtn.disabled = false;
   authSignoutBtn.textContent = "Sign Out";
+}
+
+function handleCheckoutReturn() {
+  const currentUrl = new URL(window.location.href);
+  const checkoutStatus = currentUrl.searchParams.get("checkout");
+
+  if (!checkoutStatus) {
+    return;
+  }
+
+  currentUrl.searchParams.delete("checkout");
+  window.history.replaceState({}, "", currentUrl.toString());
+  setCurrentPage("page-6", false);
+
+  if (checkoutStatus === "success") {
+    setAuthFeedback("Stripe checkout completed. Your premium access will update after the billing webhook is connected.", "success");
+    return;
+  }
+
+  if (checkoutStatus === "cancel") {
+    setAuthFeedback("Stripe checkout was canceled. Your account has not been charged.", "error");
+  }
 }
 
 function setAuthMode(mode) {
@@ -1417,6 +1439,7 @@ function resetTwistedPairPage() {
 applyState(loadState());
 setAuthMode("signin");
 refreshAccountAccessUI();
+handleCheckoutReturn();
 
 supabaseClient.auth.getSession().then(async ({ data, error }) => {
   if (error) {
@@ -1497,13 +1520,52 @@ authEntryBtn.addEventListener("click", () => {
   setCurrentPage("page-6");
 });
 
-accountSubscribeBtn.addEventListener("click", () => {
+accountSubscribeBtn.addEventListener("click", async () => {
   if (isPremiumAccess()) {
     setAuthFeedback("This account already has premium access.", "success");
     return;
   }
 
-  setAuthFeedback("Stripe web checkout is the next phase. This account page is now ready for the subscribe button to connect there.", "success");
+  if (!currentUser) {
+    setAuthFeedback("Sign in before starting a subscription.", "error");
+    return;
+  }
+
+  accountSubscribeBtn.disabled = true;
+  accountSubscribeBtn.textContent = "Opening Stripe Checkout...";
+  setAuthFeedback("Preparing secure Stripe checkout...");
+
+  try {
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+
+    if (sessionError || !sessionData.session?.access_token) {
+      throw new Error("Your session could not be verified. Please sign in again.");
+    }
+
+    const response = await fetch("/api/create-checkout-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionData.session.access_token}`
+      }
+    });
+
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Unable to start Stripe checkout.");
+    }
+
+    if (!payload.url) {
+      throw new Error("Stripe checkout did not return a redirect URL.");
+    }
+
+    window.location.assign(payload.url);
+  } catch (error) {
+    setAuthFeedback(error.message || "Unable to start Stripe checkout.", "error");
+    accountSubscribeBtn.disabled = false;
+    refreshAccountAccessUI();
+  }
 });
 
 authToggleBtn.addEventListener("click", () => {

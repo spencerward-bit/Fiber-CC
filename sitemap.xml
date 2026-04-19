@@ -2,11 +2,30 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://www.coloroptics.co/</loc>
+    <lastmod>2026-04-19</lastmod>
+  </url>
+  <url>
+    <loc>https://www.coloroptics.co/fiber-color-code.html</loc>
+    <lastmod>2026-04-19</lastmod>
+  </url>
+  <url>
+    <loc>https://www.coloroptics.co/twisted-pair-color-code.html</loc>
+    <lastmod>2026-04-19</lastmod>
+  </url>
+  <url>
+    <loc>https://www.coloroptics.co/ethernet-reference.html</loc>
+    <lastmod>2026-04-19</lastmod>
+  </url>
+  <url>
+    <loc>https://www.coloroptics.co/coax-reference.html</loc>
+    <lastmod>2026-04-19</lastmod>
   </url>
   <url>
     <loc>https://www.coloroptics.co/terms.html</loc>
+    <lastmod>2026-04-19</lastmod>
   </url>
   <url>
     <loc>https://www.coloroptics.co/privacy.html</loc>
+    <lastmod>2026-04-19</lastmod>
   </url>
 </urlset>

@@ -106,6 +106,24 @@ const pageOrder = [
   { id: "page-5", title: "Coax" },
   { id: "page-6", title: "Account" }
 ];
+const pageSlugMap = {
+  home: "page-1",
+  fiber: "page-2",
+  "fiber-color-code": "page-2",
+  "twisted-pair": "page-3",
+  "twisted-pair-color-code": "page-3",
+  ethernet: "page-4",
+  coax: "page-5",
+  account: "page-6"
+};
+const pageIdToSlug = {
+  "page-1": "home",
+  "page-2": "fiber",
+  "page-3": "twisted-pair",
+  "page-4": "ethernet",
+  "page-5": "coax",
+  "page-6": "account"
+};
 const SUPABASE_URL = "https://xekhxxodxprripdahwdr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhla2h4eG9keHBycmlwZGFod2RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MjMzOTgsImV4cCI6MjA5MTQ5OTM5OH0.buCrTi2vnG9JQYIwdtCA1jzs0wdocdT_ul4qLoPEoPQ";
 const PRODUCTION_APP_URL = "https://www.coloroptics.co/";
@@ -523,6 +541,30 @@ function updateInfoBar(message = "Tap a fiber") {
   infoBar.textContent = message;
 }
 
+function getRequestedPageFromUrl() {
+  const currentUrl = new URL(window.location.href);
+  const requestedPage = currentUrl.searchParams.get("page");
+
+  if (!requestedPage) {
+    return null;
+  }
+
+  return pageSlugMap[requestedPage.toLowerCase()] ?? null;
+}
+
+function syncUrlForPage(pageId) {
+  const currentUrl = new URL(window.location.href);
+  const nextSlug = pageIdToSlug[pageId];
+
+  if (!nextSlug || nextSlug === "home") {
+    currentUrl.searchParams.delete("page");
+  } else {
+    currentUrl.searchParams.set("page", nextSlug);
+  }
+
+  window.history.replaceState({}, "", currentUrl.toString());
+}
+
 function setAuthFeedback(message = "", type = "") {
   authFeedback.textContent = message;
   authFeedback.className = "auth-feedback";
@@ -910,7 +952,10 @@ function setCurrentPage(pageId, shouldSave = true) {
   });
 
   pageTitle.textContent = activePage.title;
-  document.title = activePage.title;
+  document.title = activePage.id === "page-1"
+    ? "Color Optics | Fiber Color Code, Twisted Pair, Ethernet, and Coax Reference"
+    : `${activePage.title} | Color Optics`;
+  syncUrlForPage(activePage.id);
   window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 
   if (shouldSave) {
@@ -1436,7 +1481,14 @@ function resetTwistedPairPage() {
   saveState();
 }
 
-applyState(loadState());
+const initialState = loadState();
+const requestedPage = getRequestedPageFromUrl();
+
+if (requestedPage) {
+  initialState.currentPage = requestedPage;
+}
+
+applyState(initialState);
 setAuthMode("signin");
 refreshAccountAccessUI();
 handleCheckoutReturn();
@@ -1536,9 +1588,12 @@ accountSubscribeBtn.addEventListener("click", async () => {
   setAuthFeedback("Preparing secure Stripe checkout...");
 
   try {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 12000);
     const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
 
     if (sessionError || !sessionData.session?.access_token) {
+      window.clearTimeout(timeoutId);
       throw new Error("Your session could not be verified. Please sign in again.");
     }
 
@@ -1547,10 +1602,18 @@ accountSubscribeBtn.addEventListener("click", async () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${sessionData.session.access_token}`
-      }
+      },
+      signal: controller.signal
     });
+    window.clearTimeout(timeoutId);
 
-    const payload = await response.json();
+    let payload;
+
+    try {
+      payload = await response.json();
+    } catch (error) {
+      throw new Error("The checkout service returned an unexpected response.");
+    }
 
     if (!response.ok) {
       throw new Error(payload.error || "Unable to start Stripe checkout.");
@@ -1562,7 +1625,10 @@ accountSubscribeBtn.addEventListener("click", async () => {
 
     window.location.assign(payload.url);
   } catch (error) {
-    setAuthFeedback(error.message || "Unable to start Stripe checkout.", "error");
+    const message = error.name === "AbortError"
+      ? "Stripe checkout timed out. The Netlify function may not be deployed yet, or the server is still starting."
+      : error.message || "Unable to start Stripe checkout.";
+    setAuthFeedback(message, "error");
     accountSubscribeBtn.disabled = false;
     refreshAccountAccessUI();
   }

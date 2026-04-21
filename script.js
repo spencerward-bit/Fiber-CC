@@ -893,7 +893,7 @@ function handleCheckoutReturn() {
   setCurrentPage("page-6", false);
 
   if (checkoutStatus === "success") {
-    setAuthFeedback("Stripe checkout completed. Your premium access will update after the billing webhook is connected.", "success");
+    setAuthFeedback("Stripe checkout completed. Your Premium access will update shortly.", "success");
     return;
   }
 

@@ -1675,6 +1675,17 @@ authForm.addEventListener("submit", async event => {
   authSubmitBtn.disabled = false;
 
   if (result.error) {
+    if (
+      currentAuthMode === "register" &&
+      /already registered|already been registered|user already exists/i.test(result.error.message || "")
+    ) {
+      setAuthMode("signin");
+      authEmailInput.value = email;
+      authPasswordInput.value = "";
+      setAuthFeedback("That email is already registered. Sign in instead.", "error");
+      return;
+    }
+
     setAuthFeedback(result.error.message, "error");
     return;
   }
@@ -1688,6 +1699,16 @@ authForm.addEventListener("submit", async event => {
   }
 
   if (currentAuthMode === "register" && !result.data.session) {
+    const identities = result.data.user?.identities || [];
+
+    if (identities.length === 0) {
+      setAuthMode("signin");
+      authEmailInput.value = email;
+      authPasswordInput.value = "";
+      setAuthFeedback("That email is already registered. Sign in instead.", "error");
+      return;
+    }
+
     setAuthFeedback("Account created. Check your email to confirm your account if prompted.", "success");
     return;
   }

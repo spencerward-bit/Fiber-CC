@@ -76,6 +76,7 @@ export default async req => {
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer_email: user.email,
+      payment_method_collection: "always",
       line_items: [
         {
           price: stripePriceId,
@@ -89,6 +90,7 @@ export default async req => {
         supabase_user_email: user.email
       },
       subscription_data: {
+        trial_period_days: 30,
         metadata: {
           supabase_user_id: user.id,
           supabase_user_email: user.email

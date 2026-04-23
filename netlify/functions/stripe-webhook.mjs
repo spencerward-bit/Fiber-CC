@@ -30,25 +30,48 @@ async function upsertUserSubscription(userId, values) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured.");
   }
 
-  const response = await fetch(`${supabaseUrl}/rest/v1/user_subscriptions?on_conflict=user_id`, {
+  const payload = {
+    user_id: userId,
+    updated_at: new Date().toISOString(),
+    ...values
+  };
+
+  const updateResponse = await fetch(`${supabaseUrl}/rest/v1/user_subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=id`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      Prefer: "return=representation"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!updateResponse.ok) {
+    const errorText = await updateResponse.text();
+    throw new Error(`Supabase subscription update failed: ${errorText}`);
+  }
+
+  const updatedRows = await updateResponse.json();
+
+  if (updatedRows.length > 0) {
+    return;
+  }
+
+  const insertResponse = await fetch(`${supabaseUrl}/rest/v1/user_subscriptions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       apikey: serviceRoleKey,
       Authorization: `Bearer ${serviceRoleKey}`,
-      Prefer: "resolution=merge-duplicates,return=representation"
+      Prefer: "return=representation"
     },
-    body: JSON.stringify([
-      {
-        user_id: userId,
-        ...values
-      }
-    ])
+    body: JSON.stringify(payload)
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Supabase upsert failed: ${errorText}`);
+  if (!insertResponse.ok) {
+    const errorText = await insertResponse.text();
+    throw new Error(`Supabase subscription insert failed: ${errorText}`);
   }
 }
 
@@ -157,7 +180,7 @@ export default async req => {
 
     const event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
 
-  switch (event.type) {
+    switch (event.type) {
       case "checkout.session.completed":
         await handleCheckoutCompleted(event.data.object);
         break;

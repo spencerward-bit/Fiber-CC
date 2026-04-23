@@ -148,6 +148,7 @@ let currentAccess = {
   status: "inactive",
   source: "none"
 };
+let pendingCheckoutAccessRefresh = false;
 
 const pairMajorColors = ["White", "Red", "Black", "Yellow", "Violet"];
 const pairMinorColors = ["Blue", "Orange", "Green", "Brown", "Slate"];
@@ -686,6 +687,22 @@ async function loadAccessForUser(user) {
   };
 }
 
+function wait(ms) {
+  return new Promise(resolve => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+async function refreshAccessForUser(user) {
+  if (!user) {
+    return false;
+  }
+
+  currentAccess = await loadAccessForUser(user);
+  applyAccessRules();
+  return isPremiumAccess();
+}
+
 function getAllowedFiberSizes() {
   return isPremiumAccess() ? cableSizes : cableSizes.filter(size => size <= FREE_ACCESS_LIMITS.maxFiberCable);
 }
@@ -893,6 +910,8 @@ function handleCheckoutReturn() {
   setCurrentPage("page-6", false);
 
   if (checkoutStatus === "success") {
+    pendingCheckoutAccessRefresh = true;
+    sessionStorage.setItem("colorOpticsCheckoutPending", "true");
     setAuthFeedback("Stripe checkout completed. Your Premium access will update shortly.", "success");
     return;
   }
@@ -900,6 +919,31 @@ function handleCheckoutReturn() {
   if (checkoutStatus === "cancel") {
     setAuthFeedback("Stripe checkout was canceled. Your account has not been charged.", "error");
   }
+}
+
+async function refreshCheckoutAccessWhenReady(user) {
+  const hasPendingCheckout = pendingCheckoutAccessRefresh || sessionStorage.getItem("colorOpticsCheckoutPending") === "true";
+
+  if (!hasPendingCheckout || !user) {
+    return;
+  }
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    if (attempt > 0) {
+      await wait(2000);
+    }
+
+    const premiumReady = await refreshAccessForUser(user);
+
+    if (premiumReady) {
+      pendingCheckoutAccessRefresh = false;
+      sessionStorage.removeItem("colorOpticsCheckoutPending");
+      setAuthFeedback("Premium access is active. Your account is unlocked.", "success");
+      return;
+    }
+  }
+
+  setAuthFeedback("Stripe checkout completed. Premium access is still updating. Refresh this page in a moment.", "success");
 }
 
 function setAuthMode(mode) {
@@ -1505,6 +1549,7 @@ supabaseClient.auth.getSession().then(async ({ data, error }) => {
     ? await loadAccessForUser(user)
     : { tier: "free", status: "inactive", source: "default" };
   applyAccessRules();
+  await refreshCheckoutAccessWhenReady(user);
 
   if (user) {
     const cloudState = await loadCloudStateForUser(user);

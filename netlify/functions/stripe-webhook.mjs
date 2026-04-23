@@ -19,7 +19,7 @@ function toIsoString(unixSeconds) {
 }
 
 function getSupabaseUserIdFromObject(object) {
-  return object?.metadata?.supabase_user_id || null;
+  return object?.metadata?.supabase_user_id || object?.client_reference_id || null;
 }
 
 async function upsertUserSubscription(userId, values) {
@@ -66,10 +66,31 @@ async function handleCheckoutCompleted(session) {
   });
 }
 
-async function handleSubscriptionUpdated(subscription) {
-  const userId = getSupabaseUserIdFromObject(subscription);
+async function getSupabaseUserIdFromSubscription(stripe, subscription) {
+  const directUserId = getSupabaseUserIdFromObject(subscription);
+
+  if (directUserId) {
+    return directUserId;
+  }
+
+  try {
+    const sessions = await stripe.checkout.sessions.list({
+      subscription: subscription.id,
+      limit: 1
+    });
+
+    return getSupabaseUserIdFromObject(sessions.data[0]);
+  } catch (error) {
+    console.error("Unable to resolve subscription checkout session:", error.message);
+    return null;
+  }
+}
+
+async function handleSubscriptionUpdated(stripe, subscription) {
+  const userId = await getSupabaseUserIdFromSubscription(stripe, subscription);
 
   if (!userId) {
+    console.error(`Missing Supabase user id for subscription ${subscription.id}.`);
     return;
   }
 
@@ -84,10 +105,11 @@ async function handleSubscriptionUpdated(subscription) {
   });
 }
 
-async function handleSubscriptionDeleted(subscription) {
-  const userId = getSupabaseUserIdFromObject(subscription);
+async function handleSubscriptionDeleted(stripe, subscription) {
+  const userId = await getSupabaseUserIdFromSubscription(stripe, subscription);
 
   if (!userId) {
+    console.error(`Missing Supabase user id for deleted subscription ${subscription.id}.`);
     return;
   }
 
@@ -135,16 +157,16 @@ export default async req => {
 
     const event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
 
-    switch (event.type) {
+  switch (event.type) {
       case "checkout.session.completed":
         await handleCheckoutCompleted(event.data.object);
         break;
       case "customer.subscription.created":
       case "customer.subscription.updated":
-        await handleSubscriptionUpdated(event.data.object);
+        await handleSubscriptionUpdated(stripe, event.data.object);
         break;
       case "customer.subscription.deleted":
-        await handleSubscriptionDeleted(event.data.object);
+        await handleSubscriptionDeleted(stripe, event.data.object);
         break;
       case "invoice.payment_failed":
         await handleInvoicePaymentFailed(event.data.object);

@@ -76,6 +76,7 @@ export default async req => {
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer_email: user.email,
+      client_reference_id: user.id,
       payment_method_collection: "always",
       line_items: [
         {

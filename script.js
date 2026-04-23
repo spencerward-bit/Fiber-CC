@@ -639,6 +639,30 @@ function parseAccessRecord(record, fallbackSource = "supabase") {
 }
 
 async function loadAccessForUser(user) {
+  try {
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+
+    if (accessToken) {
+      const response = await fetch("/api/account-access", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+
+      if (response.ok) {
+        const payload = await response.json();
+        const parsed = parseAccessRecord(payload.access, "account access");
+
+        if (parsed) {
+          return parsed;
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Unable to check server account access:", error.message);
+  }
+
   const metadataSources = [
     { label: "app metadata", value: parseAccessRecord(user?.app_metadata, "app metadata") },
     { label: "user metadata", value: parseAccessRecord(user?.user_metadata, "user metadata") }

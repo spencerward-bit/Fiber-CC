@@ -32,7 +32,6 @@ async function upsertUserSubscription(userId, values) {
 
   const payload = {
     user_id: userId,
-    updated_at: new Date().toISOString(),
     ...values
   };
 

@@ -32,6 +32,7 @@ async function upsertUserSubscription(userId, values) {
 
   const payload = {
     user_id: userId,
+    provider: "stripe",
     ...values
   };
 

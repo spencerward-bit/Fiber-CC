@@ -608,6 +608,24 @@ function getValueFromRecord(record, keys) {
   return null;
 }
 
+function formatAccessDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  const parsedDate = new Date(value);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "";
+  }
+
+  return parsedDate.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+}
+
 function parseAccessRecord(record, fallbackSource = "supabase") {
   if (!record) {
     return null;
@@ -634,7 +652,8 @@ function parseAccessRecord(record, fallbackSource = "supabase") {
   return {
     tier: "premium",
     status: normalizedStatus || "active",
-    source: sourceValue || fallbackSource
+    source: sourceValue || fallbackSource,
+    currentPeriodEnd: getValueFromRecord(record, ["current_period_end", "period_end", "renews_at", "expires_at"])
   };
 }
 
@@ -767,15 +786,32 @@ function pickClosestAllowedValue(allowedValues, desiredValue) {
   return lowerMatch ?? allowedValues[0];
 }
 
+function setOptionAvailability(option, allowed) {
+  if (!option.dataset.baseLabel) {
+    option.dataset.baseLabel = option.textContent;
+  }
+
+  option.disabled = !allowed;
+  option.textContent = allowed
+    ? option.dataset.baseLabel
+    : `${option.dataset.baseLabel} (Premium)`;
+}
+
 function refreshAccountAccessUI() {
   const premium = isPremiumAccess();
+  const premiumSource = currentAccess.source === "stripe" ? "Managed through Stripe." : "Premium access is active on this account.";
+  const trialEndsOn = formatAccessDate(currentAccess.currentPeriodEnd);
+  const premiumDetails = currentAccess.status === "trialing" && trialEndsOn
+    ? `Trial active through ${trialEndsOn}. ${premiumSource}`
+    : premiumSource;
+
   accountAccessBadge.textContent = premium ? "Premium Access" : "Free Access";
   accountAccessBadge.classList.toggle("premium", premium);
   accountAccessCopy.textContent = premium
     ? "This account can open the full Color Optics library across supported devices."
     : "Sign in with a premium-enabled account to unlock the full Color Optics library.";
   accountAccessDetails.textContent = premium
-    ? `Status: ${currentAccess.status}. Source: ${currentAccess.source}.`
+    ? premiumDetails
     : "Free access includes Fiber up to 48ct with 12ct tubes, Twisted Pair up to 50 pair, Ethernet CAT 1 and CAT 2, and no Coax access.";
   accountPlanTitle.textContent = premium ? "Premium Active" : "Color Optics Premium";
   accountPlanCopy.textContent = premium
@@ -795,8 +831,7 @@ function refreshFiberControls(accessMessage = "") {
   Array.from(fiberCountSelect.options).forEach(option => {
     const value = parseInt(option.value);
     const allowed = allowedFiberSizes.includes(value);
-    option.disabled = !allowed;
-    option.hidden = !allowed;
+    setOptionAvailability(option, allowed);
   });
 
   fiberCountSelect.value = String(clampedFiberCount);
@@ -819,8 +854,7 @@ function refreshPairControls(accessMessage = "") {
   Array.from(pairCountSelect.options).forEach(option => {
     const value = parseInt(option.value);
     const allowed = allowedPairCounts.includes(value);
-    option.disabled = !allowed;
-    option.hidden = !allowed;
+    setOptionAvailability(option, allowed);
   });
 
   pairCountSelect.value = String(clampedPairCount);
@@ -843,8 +877,7 @@ function refreshEthernetControls(accessMessage = "") {
 
   Array.from(ethernetCategorySelect.options).forEach(option => {
     const allowed = allowedCategories.includes(option.value);
-    option.disabled = !allowed;
-    option.hidden = !allowed;
+    setOptionAvailability(option, allowed);
   });
 
   ethernetCategorySelect.value = currentCategory;
@@ -1087,8 +1120,7 @@ function syncTubeSizeOptions(totalFibers, preferredTubeSize = tubeSizeSelect.val
     const optionValue = parseInt(option.value);
     const isValid = allowedTubeSizes.includes(optionValue);
 
-    option.disabled = !isValid;
-    option.hidden = !isValid;
+    setOptionAvailability(option, isValid);
 
     if (isValid) {
       fallbackValue = option.value;

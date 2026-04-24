@@ -90,6 +90,8 @@ const pairAccessNote = document.getElementById("pair-access-note");
 const pairAccessCopy = document.getElementById("pair-access-copy");
 const ethernetAccessNote = document.getElementById("ethernet-access-note");
 const ethernetAccessCopy = document.getElementById("ethernet-access-copy");
+const coaxAccessNote = document.getElementById("coax-access-note");
+const coaxAccessCopy = document.getElementById("coax-access-copy");
 const coaxLockedPanel = document.getElementById("coax-locked-panel");
 const coaxPremiumContent = document.getElementById("coax-premium-content");
 const pages = Array.from(document.querySelectorAll(".page"));
@@ -894,8 +896,18 @@ function refreshEthernetControls(accessMessage = "") {
 
 function refreshCoaxAccessUI() {
   const premium = isPremiumAccess();
+  coaxTypeSelect.disabled = !premium;
   coaxLockedPanel.classList.toggle("hidden", premium);
   coaxPremiumContent.classList.toggle("hidden", !premium);
+
+  if (premium) {
+    coaxAccessNote.classList.add("hidden");
+    coaxAccessCopy.textContent = "";
+    return;
+  }
+
+  coaxAccessNote.classList.remove("hidden");
+  coaxAccessCopy.textContent = "Free access does not include Coax. The cable menu is visible here so you can preview the premium library before unlocking it.";
 }
 
 function applyAccessRules() {

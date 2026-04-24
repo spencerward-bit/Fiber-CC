@@ -1,0 +1,8 @@
+{
+  "appId": "co.coloroptics.app",
+  "appName": "Color Optics",
+  "webDir": "mobile-web",
+  "server": {
+    "androidScheme": "https"
+  }
+}

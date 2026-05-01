@@ -36,7 +36,7 @@ async function getSubscriptionAccess(userId) {
   }
 
   const response = await fetch(
-    `${supabaseUrl}/rest/v1/user_subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=*&order=updated_at.desc.nullslast,created_at.desc&limit=1`,
+    `${supabaseUrl}/rest/v1/user_subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=25`,
     {
       headers: {
         apikey: serviceRoleKey,
@@ -51,7 +51,69 @@ async function getSubscriptionAccess(userId) {
   }
 
   const rows = await response.json();
-  return rows[0] || null;
+  return pickBestAccessRecord(rows);
+}
+
+function getValueFromRecord(record, keys) {
+  for (const key of keys) {
+    if (record && record[key] !== undefined && record[key] !== null) {
+      return record[key];
+    }
+  }
+
+  return null;
+}
+
+function parseAccessRecord(record) {
+  if (!record) {
+    return null;
+  }
+
+  const booleanPremium = getValueFromRecord(record, ["is_premium", "premium", "paid", "subscriber"]);
+  const tierValue = getValueFromRecord(record, ["tier", "plan", "access_tier", "membership", "role"]);
+  const statusValue = getValueFromRecord(record, ["status", "subscription_status", "state"]);
+
+  const normalizedTier = typeof tierValue === "string" ? tierValue.trim().toLowerCase() : "";
+  const normalizedStatus = typeof statusValue === "string" ? statusValue.trim().toLowerCase() : "";
+
+  const activeStatuses = new Set(["active", "premium", "paid", "trialing", "trial", "subscriber"]);
+  const premiumTiers = new Set(["premium", "pro", "paid", "subscriber", "active"]);
+
+  return booleanPremium === true
+    || booleanPremium === "true"
+    || premiumTiers.has(normalizedTier)
+    || activeStatuses.has(normalizedStatus);
+}
+
+function toTimestamp(value) {
+  if (!value) {
+    return 0;
+  }
+
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function pickBestAccessRecord(rows = []) {
+  const records = Array.isArray(rows) ? rows : [];
+
+  return [...records].sort((left, right) => {
+    const premiumDifference = Number(parseAccessRecord(right)) - Number(parseAccessRecord(left));
+
+    if (premiumDifference !== 0) {
+      return premiumDifference;
+    }
+
+    const periodDifference = toTimestamp(getValueFromRecord(right, ["current_period_end", "period_end", "renews_at", "expires_at"]))
+      - toTimestamp(getValueFromRecord(left, ["current_period_end", "period_end", "renews_at", "expires_at"]));
+
+    if (periodDifference !== 0) {
+      return periodDifference;
+    }
+
+    return toTimestamp(getValueFromRecord(right, ["created_at", "started_at"]))
+      - toTimestamp(getValueFromRecord(left, ["created_at", "started_at"]));
+  })[0] || null;
 }
 
 export default async req => {

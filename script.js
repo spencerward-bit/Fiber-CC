@@ -659,6 +659,64 @@ function parseAccessRecord(record, fallbackSource = "supabase") {
   };
 }
 
+function sortAccessRecords(records = []) {
+  const premiumRank = record => {
+    const parsed = parseAccessRecord(record);
+    return parsed ? 1 : 0;
+  };
+
+  const timestampValue = value => {
+    if (!value) {
+      return 0;
+    }
+
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  return [...records].sort((left, right) => {
+    const premiumDifference = premiumRank(right) - premiumRank(left);
+
+    if (premiumDifference !== 0) {
+      return premiumDifference;
+    }
+
+    const periodDifference = timestampValue(getValueFromRecord(right, ["current_period_end", "period_end", "renews_at", "expires_at"]))
+      - timestampValue(getValueFromRecord(left, ["current_period_end", "period_end", "renews_at", "expires_at"]));
+
+    if (periodDifference !== 0) {
+      return periodDifference;
+    }
+
+    return timestampValue(getValueFromRecord(right, ["created_at", "started_at"]))
+      - timestampValue(getValueFromRecord(left, ["created_at", "started_at"]));
+  });
+}
+
+async function loadAccessFromCandidateTable(candidate, userId) {
+  const { data, error } = await supabaseClient
+    .from(candidate.table)
+    .select("*")
+    .eq(candidate.column, userId)
+    .limit(25);
+
+  if (error) {
+    throw error;
+  }
+
+  const records = Array.isArray(data) ? data : data ? [data] : [];
+
+  for (const record of sortAccessRecords(records)) {
+    const parsed = parseAccessRecord(record, candidate.source);
+
+    if (parsed) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
 async function loadAccessForUser(user) {
   try {
     const { data: sessionData } = await supabaseClient.auth.getSession();
@@ -705,17 +763,7 @@ async function loadAccessForUser(user) {
 
   for (const candidate of tableCandidates) {
     try {
-      const { data, error } = await supabaseClient
-        .from(candidate.table)
-        .select("*")
-        .eq(candidate.column, user.id)
-        .maybeSingle();
-
-      if (error) {
-        continue;
-      }
-
-      const parsed = parseAccessRecord(data, candidate.source);
+      const parsed = await loadAccessFromCandidateTable(candidate, user.id);
 
       if (parsed) {
         return parsed;

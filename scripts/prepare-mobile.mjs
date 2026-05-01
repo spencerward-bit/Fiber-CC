@@ -21,8 +21,22 @@ const rootEntriesToCopy = [
 ];
 
 function resetOutputDirectory() {
-  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
+
+  const generatedEntries = [
+    ...rootEntriesToCopy,
+    "README.txt"
+  ];
+
+  generatedEntries.forEach(entryName => {
+    const entryPath = path.join(outputDir, entryName);
+
+    if (!existsSync(entryPath)) {
+      return;
+    }
+
+    rmSync(entryPath, { recursive: true, force: true });
+  });
 }
 
 function copyEntry(entryName) {
@@ -36,11 +50,11 @@ function copyEntry(entryName) {
   const sourceStats = statSync(sourcePath);
 
   if (sourceStats.isDirectory()) {
-    cpSync(sourcePath, destinationPath, { recursive: true });
+    cpSync(sourcePath, destinationPath, { recursive: true, force: true });
     return;
   }
 
-  cpSync(sourcePath, destinationPath);
+  cpSync(sourcePath, destinationPath, { force: true });
 }
 
 function copyTopLevelMedia() {

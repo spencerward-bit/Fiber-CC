@@ -610,6 +610,17 @@ function getValueFromRecord(record, keys) {
   return null;
 }
 
+function getAccessTimestamp(record, keys) {
+  const value = getValueFromRecord(record, keys);
+
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 function formatAccessDate(value) {
   if (!value) {
     return "";
@@ -637,15 +648,27 @@ function parseAccessRecord(record, fallbackSource = "supabase") {
   const tierValue = getValueFromRecord(record, ["tier", "plan", "access_tier", "membership", "role"]);
   const statusValue = getValueFromRecord(record, ["status", "subscription_status", "state"]);
   const sourceValue = getValueFromRecord(record, ["source", "provider", "subscription_source"]);
+  const currentPeriodEnd = getValueFromRecord(record, ["current_period_end", "period_end", "renews_at", "expires_at"]);
 
   const normalizedTier = typeof tierValue === "string" ? tierValue.trim().toLowerCase() : "";
   const normalizedStatus = typeof statusValue === "string" ? statusValue.trim().toLowerCase() : "";
+  const normalizedSource = typeof sourceValue === "string" ? sourceValue.trim() : "";
+  const currentPeriodEndTimestamp = getAccessTimestamp(record, ["current_period_end", "period_end", "renews_at", "expires_at"]);
 
   const activeStatuses = new Set(["active", "premium", "paid", "trialing", "trial", "subscriber"]);
+  const inactiveStatuses = new Set(["inactive", "canceled", "cancelled", "expired", "unpaid", "past_due", "incomplete", "incomplete_expired"]);
   const premiumTiers = new Set(["premium", "pro", "paid", "subscriber", "active"]);
   const isActiveBoolean = booleanPremium === true || booleanPremium === "true";
   const isPremiumTier = premiumTiers.has(normalizedTier);
   const isPremiumStatus = activeStatuses.has(normalizedStatus);
+
+  if (inactiveStatuses.has(normalizedStatus)) {
+    return null;
+  }
+
+  if (currentPeriodEndTimestamp && currentPeriodEndTimestamp < Date.now()) {
+    return null;
+  }
 
   if (!isActiveBoolean && !isPremiumTier && !isPremiumStatus) {
     return null;
@@ -654,8 +677,8 @@ function parseAccessRecord(record, fallbackSource = "supabase") {
   return {
     tier: "premium",
     status: normalizedStatus || "active",
-    source: sourceValue || fallbackSource,
-    currentPeriodEnd: getValueFromRecord(record, ["current_period_end", "period_end", "renews_at", "expires_at"])
+    source: normalizedSource || fallbackSource,
+    currentPeriodEnd
   };
 }
 

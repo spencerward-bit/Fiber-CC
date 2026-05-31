@@ -64,6 +64,17 @@ function getValueFromRecord(record, keys) {
   return null;
 }
 
+function getAccessTimestamp(record, keys) {
+  const value = getValueFromRecord(record, keys);
+
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 function parseAccessRecord(record) {
   if (!record) {
     return null;
@@ -72,17 +83,41 @@ function parseAccessRecord(record) {
   const booleanPremium = getValueFromRecord(record, ["is_premium", "premium", "paid", "subscriber"]);
   const tierValue = getValueFromRecord(record, ["tier", "plan", "access_tier", "membership", "role"]);
   const statusValue = getValueFromRecord(record, ["status", "subscription_status", "state"]);
+  const sourceValue = getValueFromRecord(record, ["source", "provider", "subscription_source"]);
+  const currentPeriodEnd = getValueFromRecord(record, ["current_period_end", "period_end", "renews_at", "expires_at"]);
 
   const normalizedTier = typeof tierValue === "string" ? tierValue.trim().toLowerCase() : "";
   const normalizedStatus = typeof statusValue === "string" ? statusValue.trim().toLowerCase() : "";
+  const normalizedSource = typeof sourceValue === "string" ? sourceValue.trim() : "";
+  const currentPeriodEndTimestamp = getAccessTimestamp(record, ["current_period_end", "period_end", "renews_at", "expires_at"]);
 
   const activeStatuses = new Set(["active", "premium", "paid", "trialing", "trial", "subscriber"]);
+  const inactiveStatuses = new Set(["inactive", "canceled", "cancelled", "expired", "unpaid", "past_due", "incomplete", "incomplete_expired"]);
   const premiumTiers = new Set(["premium", "pro", "paid", "subscriber", "active"]);
 
-  return booleanPremium === true
+  const isPremium = booleanPremium === true
     || booleanPremium === "true"
     || premiumTiers.has(normalizedTier)
     || activeStatuses.has(normalizedStatus);
+
+  if (!isPremium) {
+    return null;
+  }
+
+  if (inactiveStatuses.has(normalizedStatus)) {
+    return null;
+  }
+
+  if (currentPeriodEndTimestamp && currentPeriodEndTimestamp < Date.now()) {
+    return null;
+  }
+
+  return {
+    tier: "premium",
+    status: normalizedStatus || "active",
+    source: normalizedSource || "stripe",
+    currentPeriodEnd
+  };
 }
 
 function toTimestamp(value) {
@@ -98,7 +133,7 @@ function pickBestAccessRecord(rows = []) {
   const records = Array.isArray(rows) ? rows : [];
 
   return [...records].sort((left, right) => {
-    const premiumDifference = Number(parseAccessRecord(right)) - Number(parseAccessRecord(left));
+    const premiumDifference = Number(Boolean(parseAccessRecord(right))) - Number(Boolean(parseAccessRecord(left)));
 
     if (premiumDifference !== 0) {
       return premiumDifference;
@@ -113,7 +148,7 @@ function pickBestAccessRecord(rows = []) {
 
     return toTimestamp(getValueFromRecord(right, ["created_at", "started_at"]))
       - toTimestamp(getValueFromRecord(left, ["created_at", "started_at"]));
-  })[0] || null;
+  }).map(parseAccessRecord).find(Boolean) || null;
 }
 
 export default async req => {

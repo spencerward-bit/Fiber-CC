@@ -586,9 +586,6 @@ body {
 
 .home-card {
   padding: 18px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
 }
 
 .home-card h3 {

@@ -598,6 +598,33 @@ function updateFiberSequenceButtons() {
   updateFiberSequenceCopy();
 }
 
+function ensureFiberSequenceVisibility(sequence) {
+  if (sequence !== "16") {
+    return false;
+  }
+
+  const currentFiberCount = parseInt(fiberCountSelect.value);
+  const currentTubeSize = parseInt(tubeSizeSelect.value);
+
+  if (currentFiberCount >= 16 && currentTubeSize >= 24) {
+    return false;
+  }
+
+  const allowedFiberSizes = getAllowedFiberSizes();
+  const expandedFiberOptions = allowedFiberSizes.filter(size => size >= 24);
+  const nextFiberCount = expandedFiberOptions[0] ?? allowedFiberSizes[allowedFiberSizes.length - 1] ?? currentFiberCount;
+
+  fiberCountSelect.value = String(nextFiberCount);
+
+  const allowedTubeSizes = getAllowedTubeSizes(nextFiberCount);
+  const nextTubeSize = findSmallestSizeAtLeast(allowedTubeSizes, 24)
+    ?? allowedTubeSizes[allowedTubeSizes.length - 1]
+    ?? currentTubeSize;
+
+  syncTubeSizeOptions(nextFiberCount, String(nextTubeSize));
+  return true;
+}
+
 function setFiberSequence(nextSequence, options = {}) {
   const normalizedSequence = fiberSequences[nextSequence] ? nextSequence : "12";
   const { preserveSelection = true, shouldSave = true } = options;
@@ -606,11 +633,14 @@ function setFiberSequence(nextSequence, options = {}) {
     : null;
 
   activeFiberSequence = normalizedSequence;
+  ensureFiberSequenceVisibility(normalizedSequence);
   updateFiberSequenceButtons();
   renderMap(parseInt(fiberCountSelect.value));
 
   if (selectedTotal) {
     restoreSavedSelection(selectedTotal);
+  } else if (normalizedSequence === "16") {
+    restoreSavedSelection("13");
   } else {
     updateInfoBar();
   }

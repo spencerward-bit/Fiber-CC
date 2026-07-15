@@ -240,6 +240,61 @@ body {
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
 }
 
+.fiber-sequence-panel {
+  max-width: 980px;
+  margin: 0 auto 12px;
+  padding: 18px;
+  border: 1px solid #202830;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(20, 28, 36, 0.95), rgba(10, 14, 18, 0.95));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.fiber-sequence-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fiber-sequence-copy {
+  margin-top: 14px;
+  display: grid;
+  gap: 6px;
+  color: #d4dde3;
+}
+
+.fiber-sequence-copy strong {
+  color: #ffffff;
+  font-size: 1rem;
+}
+
+.fiber-sequence-copy p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+#fiber-sequence-preview {
+  color: #8fb7c6;
+  font-size: 0.95rem;
+}
+
+.fiber-sequence-btn {
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d4dde3;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.fiber-sequence-btn.active {
+  border-color: rgba(0, 229, 255, 0.4);
+  background: rgba(0, 229, 255, 0.16);
+  color: #ffffff;
+}
+
 .premium-note,
 .premium-locked-panel {
   max-width: 980px;
@@ -876,7 +931,9 @@ button {
 .fiber.color-slate,
 .fiber.color-red,
 .fiber.color-black,
-.fiber.color-violet {
+.fiber.color-violet,
+.fiber.color-olive,
+.fiber.color-magenta {
   color: #fff;
 }
 
@@ -946,7 +1003,15 @@ button {
 
 .fiber.color-violet.hash-1::after,
 .fiber.color-violet.hash-2::after,
-.fiber.color-violet.hash-2::before {
+.fiber.color-violet.hash-2::before,
+
+.fiber.color-olive.hash-1::after,
+.fiber.color-olive.hash-2::after,
+.fiber.color-olive.hash-2::before,
+
+.fiber.color-magenta.hash-1::after,
+.fiber.color-magenta.hash-2::after,
+.fiber.color-magenta.hash-2::before {
   background: #fff;
 }
 
@@ -1000,6 +1065,10 @@ button {
 
   .tool-panel select:last-child {
     margin-bottom: 0;
+  }
+
+  .fiber-sequence-actions {
+    grid-template-columns: 1fr;
   }
 
   .ethernet-layout,

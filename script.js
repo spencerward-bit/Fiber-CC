@@ -9,6 +9,19 @@ const tubeColors = [
 
 const fiberColors = [...tubeColors];
 
+const extendedFiberColors = [
+  ...fiberColors,
+  "Olive",
+  "Magenta",
+  "Tan",
+  "Lime"
+];
+
+const fiberSequences = {
+  "12": fiberColors,
+  "16": extendedFiberColors
+};
+
 const fiberColorMap = {
   Blue: "#0057B8",
   Orange: "#FF7A00",
@@ -21,10 +34,14 @@ const fiberColorMap = {
   Yellow: "#FFD500",
   Violet: "#8A2BE2",
   Rose: "#FF4F9A",
-  Aqua: "#00B3B8"
+  Aqua: "#00B3B8",
+  Olive: "#708238",
+  Magenta: "#D0008F",
+  Tan: "#C79A63",
+  Lime: "#9BE000"
 };
 
-const darkColors = new Set(["Blue", "Brown", "Slate", "Red", "Black", "Violet"]);
+const darkColors = new Set(["Blue", "Brown", "Slate", "Red", "Black", "Violet", "Olive", "Magenta"]);
 const STORAGE_KEY = "fiberColorMapState";
 
 const map = document.getElementById("fiber-map");
@@ -36,6 +53,10 @@ const jumpBtn = document.getElementById("jump-btn");
 const jumpTotalInput = document.getElementById("jump-total");
 const jumpTotalBtn = document.getElementById("jump-total-btn");
 const resetBtn = document.getElementById("reset-btn");
+const fiberSequenceButtons = Array.from(document.querySelectorAll("[data-fiber-sequence]"));
+const fiberSequenceTitle = document.getElementById("fiber-sequence-title");
+const fiberSequenceDescription = document.getElementById("fiber-sequence-description");
+const fiberSequencePreview = document.getElementById("fiber-sequence-preview");
 const pairCountSelect = document.getElementById("pair-count");
 const jumpBinderInput = document.getElementById("jump-binder");
 const jumpPairInput = document.getElementById("jump-pair");
@@ -454,9 +475,22 @@ const coaxCatalog = {
 };
 
 let currentPageId = "page-1";
+let activeFiberSequence = "12";
+
+const fiberSequenceMeta = {
+  "12": {
+    title: "TIA-598 12-color sequence",
+    description: "Standard 12-color fiber order used across the current cable and tube reference."
+  },
+  "16": {
+    title: "16-color sequence",
+    description: "Extended 16-color order for reference sets that continue beyond the standard 12-color rotation."
+  }
+};
 
 const defaultState = {
   currentPage: "page-1",
+  fiberSequence: "12",
   fiberCount: fiberCountSelect.value,
   tubeSize: tubeSizeSelect.value,
   jumpTube: "",
@@ -478,6 +512,7 @@ function getCurrentState() {
 
   return {
     currentPage: currentPageId,
+    fiberSequence: activeFiberSequence,
     fiberCount: fiberCountSelect.value,
     tubeSize: tubeSizeSelect.value,
     jumpTube: jumpTubeInput.value,
@@ -525,6 +560,66 @@ function saveState() {
   void saveCloudState(state);
 }
 
+function getActiveFiberSequence() {
+  return fiberSequences[activeFiberSequence] ?? fiberSequences["12"];
+}
+
+function getActiveFiberSequenceMeta() {
+  return fiberSequenceMeta[activeFiberSequence] ?? fiberSequenceMeta["12"];
+}
+
+function getFiberColorName(tubeNumber, fiberNumber) {
+  const activeSequenceColors = getActiveFiberSequence();
+
+  return {
+    tubeColor: activeSequenceColors[(tubeNumber - 1) % activeSequenceColors.length],
+    fiberColor: activeSequenceColors[(fiberNumber - 1) % activeSequenceColors.length]
+  };
+}
+
+function updateFiberSequenceCopy() {
+  if (!fiberSequenceTitle || !fiberSequenceDescription || !fiberSequencePreview) {
+    return;
+  }
+
+  const meta = getActiveFiberSequenceMeta();
+  fiberSequenceTitle.textContent = meta.title;
+  fiberSequenceDescription.textContent = meta.description;
+  fiberSequencePreview.textContent = getActiveFiberSequence().join(", ");
+}
+
+function updateFiberSequenceButtons() {
+  fiberSequenceButtons.forEach(button => {
+    const isActive = button.dataset.fiberSequence === activeFiberSequence;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+
+  updateFiberSequenceCopy();
+}
+
+function setFiberSequence(nextSequence, options = {}) {
+  const normalizedSequence = fiberSequences[nextSequence] ? nextSequence : "12";
+  const { preserveSelection = true, shouldSave = true } = options;
+  const selectedTotal = preserveSelection
+    ? document.querySelector(".fiber.active")?.dataset.total ?? null
+    : null;
+
+  activeFiberSequence = normalizedSequence;
+  updateFiberSequenceButtons();
+  renderMap(parseInt(fiberCountSelect.value));
+
+  if (selectedTotal) {
+    restoreSavedSelection(selectedTotal);
+  } else {
+    updateInfoBar();
+  }
+
+  if (shouldSave) {
+    saveState();
+  }
+}
+
 function loadState() {
   const savedState = localStorage.getItem(STORAGE_KEY);
 
@@ -540,7 +635,7 @@ function loadState() {
   }
 }
 
-function updateInfoBar(message = "Tap a fiber") {
+function updateInfoBar(message = "Tap a fiber to view tube, fiber, and color details") {
   infoBar.textContent = message;
 }
 
@@ -1249,7 +1344,8 @@ function selectFiber(target) {
   jumpFiberInput.value = fiber;
   jumpTotalInput.value = total;
 
-  updateInfoBar(`Total Fiber ${total} - Tube ${tube}, Fiber ${fiber}`);
+  const { tubeColor, fiberColor } = getFiberColorName(parseInt(tube, 10), parseInt(fiber, 10));
+  updateInfoBar(`Total Fiber ${total} - Tube ${tube} (${tubeColor}), Fiber ${fiber} (${fiberColor})`);
   saveState();
   return target;
 }
@@ -1499,9 +1595,10 @@ function renderMap(totalFibers) {
   map.innerHTML = "";
 
   const tubeCount = Math.ceil(totalFibers / fibersPerTube);
+  const activeSequenceColors = getActiveFiberSequence();
 
   for (let tubeIndex = 0; tubeIndex < tubeCount; tubeIndex++) {
-    const tubeColor = tubeColors[tubeIndex % tubeColors.length];
+    const tubeColor = activeSequenceColors[tubeIndex % activeSequenceColors.length];
     const tubeTextColor = darkColors.has(tubeColor) ? "#FFFFFF" : "#111111";
 
     const tubeDiv = document.createElement("div");
@@ -1543,7 +1640,7 @@ function renderMap(totalFibers) {
         tubeDiv.appendChild(row);
       }
 
-      const fiberColor = fiberColors[fiberIndex % fiberColors.length];
+      const fiberColor = activeSequenceColors[fiberIndex % activeSequenceColors.length];
 
       const fiber = document.createElement("div");
       fiber.className = `fiber color-${fiberColor.toLowerCase()}`;
@@ -1599,6 +1696,7 @@ function applyState(state) {
   const allowedFiberSizes = getAllowedFiberSizes();
   const allowedPairOptions = getAllowedPairCounts();
   const allowedEthernetCategories = getAllowedEthernetCategories();
+  const nextFiberSequence = fiberSequences[state.fiberSequence] ? state.fiberSequence : defaultState.fiberSequence;
   const totalFibers = pickClosestAllowedValue(allowedFiberSizes, state.fiberCount);
   const totalPairs = pickClosestAllowedValue(allowedPairOptions, state.pairCount);
   const ethernetCategory = allowedEthernetCategories.includes(state.ethernetCategory)
@@ -1607,6 +1705,8 @@ function applyState(state) {
   const nextCoaxType = coaxCatalog[state.coaxType] ? state.coaxType : defaultState.coaxType;
 
   setCurrentPage(state.currentPage, false);
+  activeFiberSequence = nextFiberSequence;
+  updateFiberSequenceButtons();
   fiberCountSelect.value = String(totalFibers);
   jumpTubeInput.value = state.jumpTube;
   jumpFiberInput.value = state.jumpFiber;
@@ -1645,6 +1745,8 @@ function configurePairMap(totalPairs) {
 }
 
 function resetFiberPage() {
+  activeFiberSequence = defaultState.fiberSequence;
+  updateFiberSequenceButtons();
   configureMap(parseInt(defaultState.fiberCount), defaultState.tubeSize);
   jumpTubeInput.value = "";
   jumpFiberInput.value = "";
@@ -1994,6 +2096,12 @@ tubeSizeSelect.addEventListener("change", () => {
   renderMap(parseInt(fiberCountSelect.value));
   updateInfoBar();
   saveState();
+});
+
+fiberSequenceButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    setFiberSequence(button.dataset.fiberSequence);
+  });
 });
 
 jumpTubeInput.addEventListener("input", saveState);

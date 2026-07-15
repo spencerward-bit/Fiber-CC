@@ -94,9 +94,10 @@ function parseAccessRecord(record) {
   const activeStatuses = new Set(["active", "premium", "paid", "trialing", "trial", "subscriber"]);
   const inactiveStatuses = new Set(["inactive", "canceled", "cancelled", "expired", "unpaid", "past_due", "incomplete", "incomplete_expired"]);
   const premiumTiers = new Set(["premium", "pro", "paid", "subscriber", "active"]);
+  const isExplicitPremium = booleanPremium === true || booleanPremium === "true";
+  const isExplicitFree = booleanPremium === false || booleanPremium === "false";
 
-  const isPremium = booleanPremium === true
-    || booleanPremium === "true"
+  const isPremium = isExplicitPremium
     || premiumTiers.has(normalizedTier)
     || activeStatuses.has(normalizedStatus);
 
@@ -104,11 +105,15 @@ function parseAccessRecord(record) {
     return null;
   }
 
-  if (inactiveStatuses.has(normalizedStatus)) {
+  if (isExplicitFree && !premiumTiers.has(normalizedTier) && !activeStatuses.has(normalizedStatus)) {
     return null;
   }
 
-  if (currentPeriodEndTimestamp && currentPeriodEndTimestamp < Date.now()) {
+  if (!isExplicitPremium && inactiveStatuses.has(normalizedStatus)) {
+    return null;
+  }
+
+  if (!isExplicitPremium && currentPeriodEndTimestamp && currentPeriodEndTimestamp < Date.now()) {
     return null;
   }
 

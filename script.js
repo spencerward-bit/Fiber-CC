@@ -784,14 +784,19 @@ function parseAccessRecord(record, fallbackSource = "supabase") {
   const inactiveStatuses = new Set(["inactive", "canceled", "cancelled", "expired", "unpaid", "past_due", "incomplete", "incomplete_expired"]);
   const premiumTiers = new Set(["premium", "pro", "paid", "subscriber", "active"]);
   const isActiveBoolean = booleanPremium === true || booleanPremium === "true";
+  const isInactiveBoolean = booleanPremium === false || booleanPremium === "false";
   const isPremiumTier = premiumTiers.has(normalizedTier);
   const isPremiumStatus = activeStatuses.has(normalizedStatus);
 
-  if (inactiveStatuses.has(normalizedStatus)) {
+  if (isInactiveBoolean && !isPremiumTier && !isPremiumStatus) {
     return null;
   }
 
-  if (currentPeriodEndTimestamp && currentPeriodEndTimestamp < Date.now()) {
+  if (!isActiveBoolean && inactiveStatuses.has(normalizedStatus)) {
+    return null;
+  }
+
+  if (!isActiveBoolean && currentPeriodEndTimestamp && currentPeriodEndTimestamp < Date.now()) {
     return null;
   }
 

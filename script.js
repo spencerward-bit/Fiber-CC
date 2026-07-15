@@ -690,6 +690,7 @@ function setFiberSequence(nextSequence, options = {}) {
   activeFiberSequence = normalizedSequence;
   rebuildTubeSizeOptions(normalizedSequence);
   ensureFiberSequenceVisibility(normalizedSequence);
+  syncTubeSizeOptions(parseInt(fiberCountSelect.value), tubeSizeSelect.value);
   updateFiberSequenceButtons();
   renderMap(parseInt(fiberCountSelect.value));
 

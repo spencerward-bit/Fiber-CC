@@ -989,7 +989,7 @@ function pickClosestAllowedValue(allowedValues, desiredValue) {
   return lowerMatch ?? allowedValues[0];
 }
 
-function setOptionAvailability(option, allowed) {
+function setOptionAvailability(option, allowed, unavailableLabel = "Premium") {
   if (!option.dataset.baseLabel) {
     option.dataset.baseLabel = option.textContent;
   }
@@ -997,7 +997,19 @@ function setOptionAvailability(option, allowed) {
   option.disabled = !allowed;
   option.textContent = allowed
     ? option.dataset.baseLabel
-    : `${option.dataset.baseLabel} (Premium)`;
+    : `${option.dataset.baseLabel} (${unavailableLabel})`;
+}
+
+function getTubeSizeRestrictionLabel(tubeSize, totalFibers) {
+  if (tubeSize > totalFibers) {
+    return "Requires larger cable";
+  }
+
+  if (!isPremiumAccess() && !FREE_ACCESS_LIMITS.allowedTubeSizes.includes(tubeSize)) {
+    return "Premium";
+  }
+
+  return "Unavailable";
 }
 
 function refreshAccountAccessUI() {
@@ -1332,8 +1344,9 @@ function syncTubeSizeOptions(totalFibers, preferredTubeSize = tubeSizeSelect.val
   options.forEach(option => {
     const optionValue = parseInt(option.value);
     const isValid = allowedTubeSizes.includes(optionValue);
+    const unavailableLabel = getTubeSizeRestrictionLabel(optionValue, totalFibers);
 
-    setOptionAvailability(option, isValid);
+    setOptionAvailability(option, isValid, unavailableLabel);
 
     if (isValid) {
       fallbackValue = option.value;

@@ -1,4 +1,4 @@
-const CACHE_NAME = "fiber-map-v3";
+const CACHE_NAME = "fiber-map-v4";
 const STATIC_FILES = [
   "./",
   "./index.html",
@@ -41,8 +41,19 @@ self.addEventListener("fetch", event => {
   const isNavigationRequest =
     event.request.mode === "navigate" ||
     event.request.destination === "document";
+  const isAppShellAsset = isSameOrigin && (
+    event.request.destination === "script" ||
+    event.request.destination === "style" ||
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".css")
+  );
 
   if (isNavigationRequest) {
+    event.respondWith(networkFirst(event.request));
+    return;
+  }
+
+  if (isAppShellAsset) {
     event.respondWith(networkFirst(event.request));
     return;
   }

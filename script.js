@@ -119,7 +119,6 @@ const pages = Array.from(document.querySelectorAll(".page"));
 const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
 const homeLinkButtons = Array.from(document.querySelectorAll("[data-home-target]"));
 const cableSizes = Array.from(fiberCountSelect.options).map(option => parseInt(option.value));
-const tubeSizes = Array.from(tubeSizeSelect.options).map(option => parseInt(option.value));
 const pairCounts = Array.from(pairCountSelect.options).map(option => parseInt(option.value));
 const pageOrder = [
   { id: "page-1", title: "Color Optics" },
@@ -155,9 +154,30 @@ const AUTH_REDIRECT_URL = window.location.hostname === "localhost"
   : PRODUCTION_APP_URL;
 const SUPABASE_PROJECT_REF = new URL(SUPABASE_URL).hostname.split(".")[0];
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const fiberTubeCatalog = {
+  "12": [
+    { value: 12, label: "12ct tubes" },
+    { value: 24, label: "24ct tubes" },
+    { value: 36, label: "36ct tubes" },
+    { value: 144, label: "144ct tubes" },
+    { value: 288, label: "288ct tubes" }
+  ],
+  "16": [
+    { value: 16, label: "1 ribbon (16ct)" },
+    { value: 32, label: "2 ribbons (32ct)" },
+    { value: 64, label: "4 ribbons (64ct)" },
+    { value: 96, label: "6 ribbons (96ct)" },
+    { value: 192, label: "12 ribbons (192ct)" },
+    { value: 384, label: "24 ribbons (384ct)" },
+    { value: 576, label: "36 ribbons (576ct)" }
+  ]
+};
 const FREE_ACCESS_LIMITS = {
   maxFiberCable: 48,
-  allowedTubeSizes: [12],
+  allowedTubeSizesBySequence: {
+    "12": [12],
+    "16": [16]
+  },
   maxPairCount: 50,
   allowedEthernetCategories: ["cat1", "cat2"],
   coaxEnabled: false
@@ -484,7 +504,7 @@ const fiberSequenceMeta = {
   },
   "16": {
     title: "16-color sequence",
-    description: "Extended 16-color order for reference sets that continue beyond the standard 12-color rotation."
+    description: "16-color ribbon order for 16ct ribbon builds, using ribbon-based tube sizes and a 16-fiber repeat sequence."
   }
 };
 
@@ -527,6 +547,40 @@ function getCurrentState() {
     ethernetCategory: ethernetCategorySelect.value,
     coaxType: coaxTypeSelect.value
   };
+}
+
+function getTubeOptionDefinitions(sequence = activeFiberSequence) {
+  return fiberTubeCatalog[sequence] ?? fiberTubeCatalog["12"];
+}
+
+function getTubeSizesForSequence(sequence = activeFiberSequence) {
+  return getTubeOptionDefinitions(sequence).map(option => option.value);
+}
+
+function getFreeAllowedTubeSizes(sequence = activeFiberSequence) {
+  return FREE_ACCESS_LIMITS.allowedTubeSizesBySequence[sequence]
+    ?? FREE_ACCESS_LIMITS.allowedTubeSizesBySequence["12"];
+}
+
+function getFiberRowSize(sequence = activeFiberSequence) {
+  return sequence === "16" ? 16 : 12;
+}
+
+function rebuildTubeSizeOptions(sequence = activeFiberSequence) {
+  const selectedValue = tubeSizeSelect.value;
+  const optionsMarkup = getTubeOptionDefinitions(sequence).map(option =>
+    `<option value="${option.value}">${option.label}</option>`
+  ).join("");
+
+  tubeSizeSelect.innerHTML = optionsMarkup;
+
+  Array.from(tubeSizeSelect.options).forEach(option => {
+    option.dataset.baseLabel = option.textContent;
+  });
+
+  if (Array.from(tubeSizeSelect.options).some(option => option.value === selectedValue)) {
+    tubeSizeSelect.value = selectedValue;
+  }
 }
 
 function saveLocalState(state) {
@@ -605,19 +659,20 @@ function ensureFiberSequenceVisibility(sequence) {
 
   const currentFiberCount = parseInt(fiberCountSelect.value);
   const currentTubeSize = parseInt(tubeSizeSelect.value);
+  const minimumTubeSize = getTubeSizesForSequence(sequence)[0] ?? 16;
 
-  if (currentFiberCount >= 16 && currentTubeSize >= 24) {
+  if (currentFiberCount >= minimumTubeSize && currentTubeSize >= minimumTubeSize) {
     return false;
   }
 
   const allowedFiberSizes = getAllowedFiberSizes();
-  const expandedFiberOptions = allowedFiberSizes.filter(size => size >= 24);
+  const expandedFiberOptions = allowedFiberSizes.filter(size => size >= minimumTubeSize);
   const nextFiberCount = expandedFiberOptions[0] ?? allowedFiberSizes[allowedFiberSizes.length - 1] ?? currentFiberCount;
 
   fiberCountSelect.value = String(nextFiberCount);
 
   const allowedTubeSizes = getAllowedTubeSizes(nextFiberCount);
-  const nextTubeSize = findSmallestSizeAtLeast(allowedTubeSizes, 24)
+  const nextTubeSize = findSmallestSizeAtLeast(allowedTubeSizes, minimumTubeSize)
     ?? allowedTubeSizes[allowedTubeSizes.length - 1]
     ?? currentTubeSize;
 
@@ -633,6 +688,7 @@ function setFiberSequence(nextSequence, options = {}) {
     : null;
 
   activeFiberSequence = normalizedSequence;
+  rebuildTubeSizeOptions(normalizedSequence);
   ensureFiberSequenceVisibility(normalizedSequence);
   updateFiberSequenceButtons();
   renderMap(parseInt(fiberCountSelect.value));
@@ -954,10 +1010,11 @@ function getAllowedFiberSizes() {
 }
 
 function getAllowedTubeSizes(totalFibers) {
+  const tubeSizes = getTubeSizesForSequence();
   const allowedByCable = tubeSizes.filter(size => size <= totalFibers);
   return isPremiumAccess()
     ? allowedByCable
-    : allowedByCable.filter(size => FREE_ACCESS_LIMITS.allowedTubeSizes.includes(size));
+    : allowedByCable.filter(size => getFreeAllowedTubeSizes().includes(size));
 }
 
 function getAllowedPairCounts() {
@@ -1005,7 +1062,7 @@ function getTubeSizeRestrictionLabel(tubeSize, totalFibers) {
     return "Requires larger cable";
   }
 
-  if (!isPremiumAccess() && !FREE_ACCESS_LIMITS.allowedTubeSizes.includes(tubeSize)) {
+  if (!isPremiumAccess() && !getFreeAllowedTubeSizes().includes(tubeSize)) {
     return "Premium";
   }
 
@@ -1027,7 +1084,7 @@ function refreshAccountAccessUI() {
     : "Sign in with a premium-enabled account to unlock the full Color Optics library.";
   accountAccessDetails.textContent = premium
     ? premiumDetails
-    : "Free access includes Fiber up to 48ct with 12ct tubes, Twisted Pair up to 50 pair, Ethernet CAT 1 and CAT 2, and no Coax access.";
+    : "Free access includes Fiber up to 48ct with 12ct tubes and 1-ribbon 16ct, Twisted Pair up to 50 pair, Ethernet CAT 1 and CAT 2, and no Coax access.";
   accountPlanTitle.textContent = premium ? "Premium Active" : "Color Optics Premium";
   accountPlanCopy.textContent = premium
     ? "This account is already unlocked for the full reference library across supported devices when signed in."
@@ -1059,7 +1116,7 @@ function refreshFiberControls(accessMessage = "") {
   }
 
   fiberAccessNote.classList.remove("hidden");
-  fiberAccessCopy.textContent = accessMessage || "Free access includes Fiber cables up to 48ct and 12ct tubes. Sign in with premium access to unlock larger cable and tube sizes.";
+  fiberAccessCopy.textContent = accessMessage || "Free access includes Fiber cables up to 48ct, 12ct tubes for the 12-color sequence, and 1-ribbon 16ct for the 16-color sequence. Sign in with premium access to unlock larger cable and tube sizes.";
 }
 
 function refreshPairControls(accessMessage = "") {
@@ -1337,6 +1394,7 @@ function getTubeRibbonMarkup(tubeNumber) {
 }
 
 function syncTubeSizeOptions(totalFibers, preferredTubeSize = tubeSizeSelect.value) {
+  rebuildTubeSizeOptions();
   const options = Array.from(tubeSizeSelect.options);
   const allowedTubeSizes = getAllowedTubeSizes(totalFibers);
   let fallbackValue = String(allowedTubeSizes[0] ?? options[0].value);
@@ -1644,6 +1702,7 @@ function renderMap(totalFibers) {
 
   const tubeCount = Math.ceil(totalFibers / fibersPerTube);
   const activeSequenceColors = getActiveFiberSequence();
+  const rowSize = getFiberRowSize();
 
   for (let tubeIndex = 0; tubeIndex < tubeCount; tubeIndex++) {
     const tubeColor = activeSequenceColors[tubeIndex % activeSequenceColors.length];
@@ -1682,7 +1741,7 @@ function renderMap(totalFibers) {
     );
 
     for (let fiberIndex = 0; fiberIndex < fibersInThisTube; fiberIndex++) {
-      if (fiberIndex % 12 === 0) {
+      if (fiberIndex % rowSize === 0) {
         row = document.createElement("div");
         row.className = "fiber-row";
         tubeDiv.appendChild(row);
@@ -1702,12 +1761,12 @@ function renderMap(totalFibers) {
 
       // Fiber hash marks
       const fiberNumberInTube = fiberIndex + 1;
-      if (fiberNumberInTube > 12 && fiberNumberInTube <= 24) {
+      if (fiberNumberInTube > rowSize && fiberNumberInTube <= rowSize * 2) {
         fiber.classList.add("hash-1");
-      } else if (fiberNumberInTube > 24 && fiberNumberInTube <= 36) {
+      } else if (fiberNumberInTube > rowSize * 2 && fiberNumberInTube <= rowSize * 3) {
         fiber.classList.add("hash-2");
-      } else if (fiberNumberInTube > 36) {
-        const rowNumber = Math.ceil(fiberNumberInTube / 12);
+      } else if (fiberNumberInTube > rowSize * 3) {
+        const rowNumber = Math.ceil(fiberNumberInTube / rowSize);
         fiber.classList.add("roman-marker");
         fiber.dataset.rowMarker = toRomanNumeral(rowNumber);
       }
@@ -1754,6 +1813,7 @@ function applyState(state) {
 
   setCurrentPage(state.currentPage, false);
   activeFiberSequence = nextFiberSequence;
+  rebuildTubeSizeOptions(nextFiberSequence);
   updateFiberSequenceButtons();
   fiberCountSelect.value = String(totalFibers);
   jumpTubeInput.value = state.jumpTube;
@@ -1794,6 +1854,7 @@ function configurePairMap(totalPairs) {
 
 function resetFiberPage() {
   activeFiberSequence = defaultState.fiberSequence;
+  rebuildTubeSizeOptions(defaultState.fiberSequence);
   updateFiberSequenceButtons();
   configureMap(parseInt(defaultState.fiberCount), defaultState.tubeSize);
   jumpTubeInput.value = "";
@@ -2162,16 +2223,18 @@ jumpTotalPairInput.addEventListener("input", saveState);
 jumpBtn.addEventListener("click", () => {
   const tube = parseInt(jumpTubeInput.value);
   const fiber = parseInt(jumpFiberInput.value);
+  const tubeSizes = getTubeSizesForSequence();
+  const freeTubeLimit = getFreeAllowedTubeSizes()[0] ?? tubeSizes[0] ?? 12;
 
   if (!tube || !fiber || tube < 1 || fiber < 1) {
     alert("Enter a valid tube number and fiber number.");
     return;
   }
 
-  if (!isPremiumAccess() && fiber > 12) {
+  if (!isPremiumAccess() && fiber > freeTubeLimit) {
     fiberAccessNote.classList.remove("hidden");
-    fiberAccessNote.textContent = "Free access only includes 12ct tubes. Premium unlocks larger tube sizes.";
-    alert("Free access only includes 12ct tubes.");
+    fiberAccessNote.textContent = `Free access only includes ${freeTubeLimit}ct ${activeFiberSequence === "16" ? "ribbons" : "tubes"}. Premium unlocks larger tube sizes.`;
+    alert(`Free access only includes ${freeTubeLimit}ct ${activeFiberSequence === "16" ? "ribbons" : "tubes"}.`);
     return;
   }
 
@@ -2182,9 +2245,9 @@ jumpBtn.addEventListener("click", () => {
     return;
   }
 
-  if (!isPremiumAccess() && !FREE_ACCESS_LIMITS.allowedTubeSizes.includes(nextTubeSize)) {
+  if (!isPremiumAccess() && !getFreeAllowedTubeSizes().includes(nextTubeSize)) {
     fiberAccessNote.classList.remove("hidden");
-    fiberAccessNote.textContent = "Free access only includes 12ct tubes. Premium unlocks larger tube sizes.";
+    fiberAccessNote.textContent = "Free access only includes the base tube size for each sequence. Premium unlocks larger tube sizes.";
     alert("That jump requires a premium tube size.");
     return;
   }
@@ -2222,7 +2285,9 @@ jumpBtn.addEventListener("click", () => {
 jumpTotalBtn.addEventListener("click", () => {
   const total = parseInt(jumpTotalInput.value);
   const nextCableSize = findSmallestSizeAtLeast(cableSizes, total);
+  const tubeSizes = getTubeSizesForSequence();
   const selectedTubeSize = parseInt(tubeSizeSelect.value);
+  const defaultTubeSize = tubeSizes[0] ?? (activeFiberSequence === "16" ? 16 : 12);
 
   if (!total || total < 1) {
     alert("Enter a valid total fiber number.");
@@ -2241,7 +2306,7 @@ jumpTotalBtn.addEventListener("click", () => {
     return;
   }
 
-  const preferredTubeSize = selectedTubeSize || 12;
+  const preferredTubeSize = selectedTubeSize || defaultTubeSize;
   configureMap(nextCableSize, preferredTubeSize);
 
   const tube = Math.ceil(total / fibersPerTube);

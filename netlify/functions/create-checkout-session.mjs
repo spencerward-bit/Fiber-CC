@@ -1,117 +1,136 @@
 import Stripe from "stripe";
+import {
+  findSubscriptionByUserId,
+  getAuthenticatedUser,
+  isPremiumSubscription,
+  jsonResponse,
+  optionalEnv,
+  requireEnv,
+  subscriptionRecordFromStripe,
+  upsertSubscription,
+} from "./_shared/subscriptions.mjs";
 
-const DEFAULT_APP_URL = "https://www.coloroptics.co";
-const DEFAULT_SUPABASE_URL = "https://xekhxxodxprripdahwdr.supabase.co";
-const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6Inhla2h4eG9keHBycmlwZGFod2RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MjMzOTgsImV4cCI6MjA5MTQ5OTM5OH0.buCrTi2vnG9JQYIwdtCA1jzs0wdocdT_ul4qLoPEoPQ";
-const DEFAULT_STRIPE_PRICE_ID = "price_1TNDFsKBGIvdmveYrW8VIgR9";
-
-function getEnvValue(name, fallback = "") {
-  if (typeof Netlify !== "undefined" && Netlify.env) {
-    return Netlify.env.get(name) || fallback;
-  }
-
-  return process.env[name] || fallback;
+function customerIdFromRecord(record) {
+  return record?.stripe_customer_id || null;
 }
 
-async function getAuthenticatedUser(accessToken) {
-  const supabaseUrl = getEnvValue("SUPABASE_URL", DEFAULT_SUPABASE_URL);
-  const supabaseAnonKey = getEnvValue("SUPABASE_ANON_KEY", DEFAULT_SUPABASE_ANON_KEY);
+function subscriptionUsesPrice(subscription, priceId) {
+  return subscription?.items?.data?.some((item) => item?.price?.id === priceId);
+}
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      apikey: supabaseAnonKey
+async function findStripeCustomers(stripe, user, record) {
+  const customers = [];
+  const savedCustomerId = customerIdFromRecord(record);
+
+  if (savedCustomerId) {
+    try {
+      const savedCustomer = await stripe.customers.retrieve(savedCustomerId);
+      if (!savedCustomer.deleted) customers.push(savedCustomer);
+    } catch (error) {
+      console.warn(`Unable to retrieve saved Stripe customer ${savedCustomerId}:`, error.message);
     }
-  });
-
-  if (!response.ok) {
-    throw new Error("Unable to verify the signed-in user.");
   }
 
-  return response.json();
+  const matches = await stripe.customers.list({ email: user.email, limit: 100 });
+  for (const customer of matches.data) {
+    if (!customers.some((candidate) => candidate.id === customer.id)) customers.push(customer);
+  }
+
+  return customers.sort((left, right) => {
+    const leftMatches = left.metadata?.supabase_user_id === user.id ? 1 : 0;
+    const rightMatches = right.metadata?.supabase_user_id === user.id ? 1 : 0;
+    return rightMatches - leftMatches;
+  });
 }
 
-export default async req => {
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed." }), {
-      status: 405,
-      headers: { "Content-Type": "application/json" }
-    });
+async function inspectExistingSubscriptions(stripe, customers, priceId) {
+  const subscriptions = [];
+  for (const customer of customers) {
+    const page = await stripe.subscriptions.list({ customer: customer.id, status: "all", limit: 100 });
+    subscriptions.push(...page.data.filter((subscription) => subscriptionUsesPrice(subscription, priceId)));
   }
+
+  subscriptions.sort((left, right) => (right.created || 0) - (left.created || 0));
+  return {
+    active: subscriptions.find((subscription) => ["active", "trialing"].includes(subscription.status)) || null,
+    hasHistory: subscriptions.length > 0,
+  };
+}
+
+export default async (req) => {
+  if (req.method !== "POST") return jsonResponse(405, { error: "Method not allowed." });
 
   try {
     const authorization = req.headers.get("authorization") || "";
-    const accessToken = authorization.startsWith("Bearer ")
-      ? authorization.slice("Bearer ".length)
-      : "";
-
-    if (!accessToken) {
-      return new Response(JSON.stringify({ error: "Sign in before subscribing." }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-
-    const stripeSecretKey = getEnvValue("STRIPE_SECRET_KEY");
-    const stripePriceId = getEnvValue("STRIPE_PRICE_ID", DEFAULT_STRIPE_PRICE_ID);
-    const appUrl = getEnvValue("APP_URL", DEFAULT_APP_URL);
-
-    if (!stripeSecretKey) {
-      return new Response(JSON.stringify({ error: "Stripe is not configured on the server yet." }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
+    const accessToken = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+    if (!accessToken) return jsonResponse(401, { error: "Sign in before subscribing." });
 
     const user = await getAuthenticatedUser(accessToken);
-
     if (!user?.id || !user?.email) {
-      return new Response(JSON.stringify({ error: "Unable to match checkout to a signed-in account." }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" }
+      return jsonResponse(401, { error: "Unable to match checkout to a signed-in account." });
+    }
+
+    const stripe = new Stripe(requireEnv("STRIPE_SECRET_KEY"));
+    const stripePriceId = requireEnv("STRIPE_PRICE_ID");
+    const appUrl = requireEnv("APP_URL").replace(/\/$/, "");
+    const trialDays = Math.max(0, Number.parseInt(optionalEnv("STRIPE_TRIAL_DAYS", "30"), 10) || 0);
+    const record = await findSubscriptionByUserId(user.id);
+
+    if (isPremiumSubscription(record)) {
+      return jsonResponse(409, {
+        code: "already_subscribed",
+        error: "This account already has Premium access.",
       });
     }
 
-    const stripe = new Stripe(stripeSecretKey);
-    const checkoutSession = await stripe.checkout.sessions.create({
+    const customers = await findStripeCustomers(stripe, user, record);
+    const existing = await inspectExistingSubscriptions(stripe, customers, stripePriceId);
+    if (existing.active) {
+      await upsertSubscription(subscriptionRecordFromStripe(existing.active, user.id));
+      return jsonResponse(409, {
+        code: "already_subscribed",
+        accessUpdated: true,
+        error: "Your existing Stripe subscription has been connected to this account.",
+      });
+    }
+
+    const customer = customers[0] || null;
+    if (customer && customer.metadata?.supabase_user_id !== user.id) {
+      await stripe.customers.update(customer.id, {
+        metadata: { ...customer.metadata, supabase_user_id: user.id },
+      });
+    }
+
+    const subscriptionData = {
+      metadata: { supabase_user_id: user.id, supabase_user_email: user.email },
+    };
+    if (!existing.hasHistory && trialDays > 0) subscriptionData.trial_period_days = trialDays;
+
+    const checkoutOptions = {
       mode: "subscription",
-      customer_email: user.email,
       client_reference_id: user.id,
       payment_method_collection: "always",
-      line_items: [
-        {
-          price: stripePriceId,
-          quantity: 1
-        }
-      ],
+      line_items: [{ price: stripePriceId, quantity: 1 }],
       success_url: `${appUrl}/?checkout=success`,
       cancel_url: `${appUrl}/?checkout=cancel`,
-      metadata: {
-        supabase_user_id: user.id,
-        supabase_user_email: user.email
-      },
-      subscription_data: {
-        trial_period_days: 30,
-        metadata: {
-          supabase_user_id: user.id,
-          supabase_user_email: user.email
-        }
-      },
-      allow_promotion_codes: true
+      metadata: { supabase_user_id: user.id, supabase_user_email: user.email },
+      subscription_data: subscriptionData,
+      allow_promotion_codes: true,
+    };
+
+    if (customer) checkoutOptions.customer = customer.id;
+    else checkoutOptions.customer_email = user.email;
+
+    const requestId = req.headers.get("x-checkout-request-id") || crypto.randomUUID();
+    const checkoutSession = await stripe.checkout.sessions.create(checkoutOptions, {
+      idempotencyKey: `color-optics-checkout-${user.id}-${requestId}`.slice(0, 255),
     });
 
-    return new Response(JSON.stringify({ url: checkoutSession.url }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
+    return jsonResponse(200, { url: checkoutSession.url });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message || "Unable to start Stripe checkout." }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
+    console.error("Unable to create Stripe checkout:", error);
+    return jsonResponse(500, { error: "Unable to start Stripe checkout. Please try again." });
   }
 };
 
-export const config = {
-  path: "/api/create-checkout-session"
-};
+export const config = { path: "/api/create-checkout-session" };

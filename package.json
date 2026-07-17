@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node --test --test-isolation=none",
+    "subscriptions:reconcile": "node scripts/reconcile-stripe-subscriber.mjs",
     "mobile:prepare": "node scripts/prepare-mobile.mjs",
     "cap:sync": "npm run mobile:prepare && npx cap sync",
     "cap:copy": "npm run mobile:prepare && npx cap copy",

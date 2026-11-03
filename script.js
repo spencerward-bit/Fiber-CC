@@ -1,4 +1,13 @@
-﻿const tubeSizeSelect = document.getElementById("tube-size");
+﻿import {
+  allowsWebBilling,
+  apiUrl,
+  authRedirectUrl,
+  isNativeCapacitor,
+  nativeAccountCopy,
+} from "./shared/billing-policy.mjs";
+import { parseAuthCallbackUrl } from "./shared/native-auth.mjs";
+
+const tubeSizeSelect = document.getElementById("tube-size");
 let fibersPerTube = parseInt(tubeSizeSelect.value);
 
 const tubeColors = [
@@ -105,6 +114,11 @@ const accountPlanTitle = document.getElementById("account-plan-title");
 const accountPlanCopy = document.getElementById("account-plan-copy");
 const accountSubscribeBtn = document.getElementById("account-subscribe-btn");
 const accountSubscribeNote = document.getElementById("account-subscribe-note");
+const accountDeleteBtn = document.getElementById("account-delete-btn");
+const accountDeletePanel = document.getElementById("account-delete-panel");
+const accountDeleteConfirmInput = document.getElementById("account-delete-confirm");
+const accountDeleteConfirmBtn = document.getElementById("account-delete-confirm-btn");
+const accountDeleteCancelBtn = document.getElementById("account-delete-cancel-btn");
 const fiberAccessNote = document.getElementById("fiber-access-note");
 const fiberAccessCopy = document.getElementById("fiber-access-copy");
 const pairAccessNote = document.getElementById("pair-access-note");
@@ -148,11 +162,27 @@ const pageIdToSlug = {
 };
 const SUPABASE_URL = "https://xekhxxodxprripdahwdr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhla2h4eG9keHBycmlwZGFod2RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MjMzOTgsImV4cCI6MjA5MTQ5OTM5OH0.buCrTi2vnG9JQYIwdtCA1jzs0wdocdT_ul4qLoPEoPQ";
-const PRODUCTION_APP_URL = "https://www.coloroptics.co/";
-const AUTH_REDIRECT_URL = window.location.hostname === "localhost"
-  ? `${window.location.origin}/`
-  : PRODUCTION_APP_URL;
 const SUPABASE_PROJECT_REF = new URL(SUPABASE_URL).hostname.split(".")[0];
+
+function isNativeApp() {
+  return isNativeCapacitor(window.Capacitor);
+}
+
+function getAuthRedirectUrl() {
+  return authRedirectUrl({
+    isNative: isNativeApp(),
+    hostname: window.location.hostname,
+    origin: window.location.origin,
+  });
+}
+
+function appApiUrl(path) {
+  return apiUrl(path, { isNative: isNativeApp() });
+}
+
+if (isNativeApp()) {
+  document.documentElement.dataset.nativeApp = "true";
+}
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const fiberTubeCatalog = {
   "12": [
@@ -192,6 +222,10 @@ let currentAccess = {
   source: "none"
 };
 let pendingCheckoutAccessRefresh = false;
+let pendingAuthCallbackType = "";
+let accountDeletionInProgress = false;
+const pageHistory = [];
+const handledAuthUrls = new Set();
 
 const pairMajorColors = ["White", "Red", "Black", "Yellow", "Violet"];
 const pairMinorColors = ["Blue", "Orange", "Green", "Brown", "Slate"];
@@ -830,7 +864,7 @@ async function loadAccessForUser(user) {
       throw new Error("The signed-in session is unavailable.");
     }
 
-    const response = await fetch("/api/account-access", {
+    const response = await fetch(appApiUrl("/api/account-access"), {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: "no-store"
     });
@@ -928,6 +962,25 @@ function getTubeSizeRestrictionLabel(tubeSize, totalFibers) {
 
 function refreshAccountAccessUI() {
   const premium = isPremiumAccess();
+
+  if (!allowsWebBilling(isNativeApp())) {
+    const copy = nativeAccountCopy({
+      isPremium: premium,
+      status: currentAccess.status,
+      periodLabel: formatAccessDate(currentAccess.currentPeriodEnd),
+    });
+    accountAccessBadge.textContent = copy.badge;
+    accountAccessBadge.classList.toggle("premium", premium);
+    accountAccessCopy.textContent = copy.accessCopy;
+    accountAccessDetails.textContent = copy.details;
+    accountPlanTitle.textContent = copy.planTitle;
+    accountPlanCopy.textContent = copy.planCopy;
+    accountSubscribeBtn.disabled = true;
+    accountSubscribeBtn.textContent = "";
+    accountSubscribeNote.textContent = "";
+    return;
+  }
+
   const premiumSource = currentAccess.source === "stripe" ? "Managed through Stripe." : "Premium access is active on this account.";
   const trialEndsOn = formatAccessDate(currentAccess.currentPeriodEnd);
   const premiumDetails = currentAccess.status === "trialing" && trialEndsOn
@@ -1079,12 +1132,13 @@ function clearSupabaseSessionStorage() {
   });
 }
 
-function finalizeSignOutUI(message = "Signed out successfully.") {
+function finalizeSignOutUI(message = "Signed out successfully.", nextMode = "register") {
   isSigningOut = false;
   currentAccess = { tier: "free", status: "inactive", source: "default" };
   clearSupabaseSessionStorage();
   authForm.reset();
-  setAuthMode("register");
+  closeAccountDeletionPrompt();
+  setAuthMode(nextMode);
   updateAuthUI(null);
   applyAccessRules();
   setCurrentPage("page-6", false);
@@ -1099,6 +1153,13 @@ function handleCheckoutReturn() {
   const billingStatus = currentUrl.searchParams.get("billing");
 
   if (!checkoutStatus && !billingStatus) {
+    return;
+  }
+
+  if (!allowsWebBilling(isNativeApp())) {
+    currentUrl.searchParams.delete("checkout");
+    currentUrl.searchParams.delete("billing");
+    window.history.replaceState({}, "", currentUrl.toString());
     return;
   }
 
@@ -1180,14 +1241,23 @@ function updateAuthUI(user) {
   if (isSignedIn && !isRecovery) {
     authUserEmail.textContent = user.email ?? "Signed-in user";
     authSessionCopy.textContent = "Your account is connected. Your settings can now sync with Supabase.";
-  } else {
+  } else if (!isRecovery) {
     authUserEmail.textContent = "";
     setAuthMode(currentAuthMode);
   }
 }
 
-function setCurrentPage(pageId, shouldSave = true) {
+function setCurrentPage(pageId, shouldSave = true, options = {}) {
+  const recordHistory = options.recordHistory !== false;
   const activePage = pageOrder.find(page => page.id === pageId) ?? pageOrder[0];
+
+  if (recordHistory && currentPageId && currentPageId !== activePage.id) {
+    pageHistory.push(currentPageId);
+    if (pageHistory.length > 30) {
+      pageHistory.shift();
+    }
+  }
+
   currentPageId = activePage.id;
 
   pages.forEach(page => {
@@ -1675,7 +1745,7 @@ function applyState(state) {
     : allowedEthernetCategories[0];
   const nextCoaxType = coaxCatalog[state.coaxType] ? state.coaxType : defaultState.coaxType;
 
-  setCurrentPage(state.currentPage, false);
+  setCurrentPage(state.currentPage, false, { recordHistory: false });
   activeFiberSequence = nextFiberSequence;
   rebuildTubeSizeOptions(nextFiberSequence);
   updateFiberSequenceButtons();
@@ -1795,7 +1865,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
     : { tier: "free", status: "inactive", source: "default" };
   applyAccessRules();
 
-  if (event === "SIGNED_IN" && user) {
+  if (event === "SIGNED_IN" && user && pendingAuthCallbackType !== "recovery") {
     const cloudState = await loadCloudStateForUser(user);
 
     if (cloudState) {
@@ -1810,7 +1880,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
     }
   }
 
-  if (event === "SIGNED_OUT") {
+  if (event === "SIGNED_OUT" && !accountDeletionInProgress) {
     finalizeSignOutUI("Signed out successfully.");
   }
 });
@@ -1832,6 +1902,10 @@ authEntryBtn.addEventListener("click", () => {
 });
 
 accountSubscribeBtn.addEventListener("click", async () => {
+  if (!allowsWebBilling(isNativeApp())) {
+    return;
+  }
+
   if (!currentUser) {
     setAuthFeedback("Sign in before managing a subscription.", "error");
     return;
@@ -1932,7 +2006,13 @@ authForm.addEventListener("submit", async event => {
   let result;
 
   if (currentAuthMode === "register") {
-    result = await supabaseClient.auth.signUp({ email, password });
+    result = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: getAuthRedirectUrl()
+      }
+    });
   } else if (currentAuthMode === "recovery") {
     result = await supabaseClient.auth.updateUser({ password });
   } else {
@@ -1997,7 +2077,7 @@ authResetPasswordBtn.addEventListener("click", async () => {
   setAuthFeedback("Sending reset email...");
 
   const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-    redirectTo: AUTH_REDIRECT_URL
+    redirectTo: getAuthRedirectUrl()
   });
 
   authResetPasswordBtn.disabled = false;
@@ -2007,7 +2087,12 @@ authResetPasswordBtn.addEventListener("click", async () => {
     return;
   }
 
-  setAuthFeedback("Password reset email sent. Open the link in your email to choose a new password.", "success");
+  setAuthFeedback(
+    isNativeApp()
+      ? "Password reset email sent. Open the link on this device to choose a new password."
+      : "Password reset email sent. Open the link in your email to choose a new password.",
+    "success"
+  );
 });
 
 authSignoutBtn.addEventListener("click", async event => {
@@ -2290,4 +2375,188 @@ coaxTypeSelect.addEventListener("change", () => {
   renderCoaxDiagram(coaxCatalog[coaxTypeSelect.value]);
   saveState();
 });
+
+function closeAccountDeletionPrompt() {
+  if (!accountDeletePanel || accountDeletePanel.classList.contains("hidden")) {
+    return false;
+  }
+
+  accountDeletePanel.classList.add("hidden");
+  accountDeleteBtn?.classList.remove("hidden");
+  if (accountDeleteConfirmInput) {
+    accountDeleteConfirmInput.value = "";
+  }
+  return true;
+}
+
+function handleNativeBack(appPlugin) {
+  if (closeAccountDeletionPrompt()) {
+    return;
+  }
+
+  if (pageHistory.length) {
+    const previousPageId = pageHistory.pop();
+    setCurrentPage(previousPageId, true, { recordHistory: false });
+    return;
+  }
+
+  if (currentPageId !== "page-1") {
+    setCurrentPage("page-1", true, { recordHistory: false });
+    return;
+  }
+
+  void appPlugin.exitApp();
+}
+
+async function completeNativeAuthCallback(url) {
+  if (!url || handledAuthUrls.has(url)) {
+    return;
+  }
+
+  const parsed = parseAuthCallbackUrl(url);
+  if (!parsed) {
+    return;
+  }
+
+  handledAuthUrls.add(url);
+  pendingAuthCallbackType = parsed.type || "";
+  setCurrentPage("page-6", false);
+
+  if (parsed.error) {
+    pendingAuthCallbackType = "";
+    setAuthFeedback(parsed.error, "error");
+    return;
+  }
+
+  if (pendingAuthCallbackType === "recovery") {
+    setAuthMode("recovery");
+  }
+
+  const result = parsed.code
+    ? await supabaseClient.auth.exchangeCodeForSession(parsed.code)
+    : await supabaseClient.auth.setSession({
+      access_token: parsed.accessToken,
+      refresh_token: parsed.refreshToken
+    });
+
+  if (result.error) {
+    pendingAuthCallbackType = "";
+    setAuthFeedback(result.error.message || "The email link could not be opened in the app.", "error");
+    return;
+  }
+
+  const user = result.data?.user ?? result.data?.session?.user ?? null;
+
+  if (pendingAuthCallbackType === "recovery") {
+    setAuthMode("recovery");
+    updateAuthUI(user);
+    authPasswordInput.value = "";
+    setAuthFeedback("Enter a new password, then select Update Password.", "success");
+    return;
+  }
+
+  pendingAuthCallbackType = "";
+  updateAuthUI(user);
+  setAuthFeedback("Email link confirmed. You are signed in.", "success");
+}
+
+function initNativeShell() {
+  if (!isNativeApp() || typeof window.Capacitor?.registerPlugin !== "function") {
+    return;
+  }
+
+  try {
+    const appPlugin = window.Capacitor.registerPlugin("App");
+    void appPlugin.addListener("backButton", () => {
+      handleNativeBack(appPlugin);
+    });
+    void appPlugin.addListener("appUrlOpen", event => {
+      void completeNativeAuthCallback(event?.url);
+    });
+
+    void appPlugin.getLaunchUrl()
+      .then(result => {
+        if (result?.url) {
+          return completeNativeAuthCallback(result.url);
+        }
+        return null;
+      })
+      .catch(error => {
+        console.error("Unable to read the launch URL:", error?.message || error);
+      });
+  } catch (error) {
+    console.error("Native shell controls are unavailable:", error?.message || error);
+  }
+}
+
+accountDeleteBtn?.addEventListener("click", () => {
+  accountDeletePanel.classList.remove("hidden");
+  accountDeleteBtn.classList.add("hidden");
+  accountDeleteConfirmInput.value = "";
+  accountDeleteConfirmInput.focus();
+  setAuthFeedback();
+});
+
+accountDeleteCancelBtn?.addEventListener("click", () => {
+  closeAccountDeletionPrompt();
+  setAuthFeedback();
+});
+
+accountDeleteConfirmBtn?.addEventListener("click", async () => {
+  if (!currentUser) {
+    setAuthFeedback("Sign in before deleting your account.", "error");
+    return;
+  }
+
+  if (accountDeleteConfirmInput.value.trim() !== "DELETE") {
+    setAuthFeedback("Type DELETE to confirm account deletion.", "error");
+    return;
+  }
+
+  accountDeleteConfirmBtn.disabled = true;
+  setAuthFeedback("Deleting account...");
+
+  try {
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (sessionError || !accessToken) {
+      throw new Error("Your session could not be verified. Please sign in again.");
+    }
+
+    const response = await fetch(appApiUrl("/api/delete-account"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({ confirm: "DELETE" })
+    });
+
+    let payload = {};
+    try {
+      payload = await response.json();
+    } catch (error) {
+      payload = {};
+    }
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Account deletion could not be finished.");
+    }
+
+    localStorage.removeItem(STORAGE_KEY);
+    accountDeletionInProgress = true;
+    try {
+      await supabaseClient.auth.signOut({ scope: "local" });
+    } catch (error) {
+      clearSupabaseSessionStorage();
+    }
+    finalizeSignOutUI("Your account and its saved data were deleted.", "signin");
+    accountDeletionInProgress = false;
+  } catch (error) {
+    setAuthFeedback(error.message || "Account deletion could not be finished.", "error");
+    accountDeleteConfirmBtn.disabled = false;
+  }
+});
+
+initNativeShell();
 

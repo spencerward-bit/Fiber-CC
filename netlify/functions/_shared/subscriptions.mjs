@@ -1,4 +1,20 @@
 const ACTIVE_STATUSES = new Set(["active", "trialing"]);
+const PERIOD_BOUND_PROVIDERS = new Set(["stripe", "google_play"]);
+const STRIPE_CANCELABLE_STATUSES = new Set([
+  "active",
+  "trialing",
+  "past_due",
+  "unpaid",
+  "paused",
+  "incomplete",
+]);
+const NATIVE_APP_ORIGINS = new Set([
+  "https://localhost",
+  "capacitor://localhost",
+]);
+const USER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const GOOGLE_PLAY_PROVIDER = "google_play";
 
 export function requireEnv(name) {
   const netlifyValue = typeof Netlify !== "undefined" && Netlify.env
@@ -37,9 +53,11 @@ export function isPremiumSubscription(record, now = new Date()) {
   const status = String(record.status || "").toLowerCase();
   if (!ACTIVE_STATUSES.has(status)) return false;
 
-  // Stripe subscriptions always have a billing or trial boundary. Requiring it
-  // prevents a stale row from granting access forever if webhook delivery stops.
-  if (String(record.provider || "").toLowerCase() === "stripe" && !record.current_period_end) {
+  // Stripe and future Google Play rows always have a billing or trial boundary.
+  // Requiring it prevents a stale row from granting access forever if the
+  // store notification stops arriving. Manual grants may omit a period end.
+  const provider = String(record.provider || "").toLowerCase();
+  if (PERIOD_BOUND_PROVIDERS.has(provider) && !record.current_period_end) {
     return false;
   }
 
@@ -164,5 +182,90 @@ export function subscriptionRecordFromStripe(subscription, userId, event = null)
     trial_started_at: unixToIso(subscription?.trial_start),
     last_stripe_event_id: event?.id || null,
     last_stripe_event_created_at: unixToIso(event?.created),
+  };
+}
+
+/**
+ * Row shape for a future Google Play Billing writer (for example a
+ * RevenueCat webhook handled by a Netlify Function). The writer must use the
+ * service role. The app must not insert this row itself.
+ *
+ * `provider` stays `google_play` even when RevenueCat delivers the event, so
+ * entitlement checks do not grow a second store vocabulary. Stripe columns
+ * are omitted on purpose: a merge update must not blank a web subscription
+ * that entitlementWriteShouldReplace still needs to see.
+ */
+export function subscriptionRecordFromGooglePlay({
+  userId,
+  productId,
+  transactionId = null,
+  status,
+  currentPeriodEnd,
+  startedAt = null,
+  canceledAt = null,
+}) {
+  if (!userId) throw new Error("A Google Play entitlement requires a user id.");
+  if (!productId) throw new Error("A Google Play entitlement requires a product id.");
+  const normalizedStatus = String(status || "inactive").toLowerCase();
+  return {
+    user_id: userId,
+    provider: GOOGLE_PLAY_PROVIDER,
+    status: normalizedStatus,
+    is_premium: stripeStatusGrantsPremium(normalizedStatus),
+    store_product_id: productId,
+    store_transaction_id: transactionId,
+    started_at: startedAt,
+    current_period_end: currentPeriodEnd,
+    canceled_at: canceledAt,
+  };
+}
+
+/**
+ * One subscription row exists per user. A future Play writer should refuse to
+ * replace a Stripe subscription that is still Premium. Stripe webhooks keep
+ * updating their own rows and do not call this helper.
+ */
+export function entitlementWriteShouldReplace(existing, incoming) {
+  if (!existing) return true;
+  if (!incoming?.user_id || incoming.user_id !== existing.user_id) return false;
+  const incomingProvider = String(incoming.provider || "").toLowerCase();
+  const existingProvider = String(existing.provider || "").toLowerCase();
+  if (
+    incomingProvider === GOOGLE_PLAY_PROVIDER
+    && existingProvider === "stripe"
+    && isPremiumSubscription(existing)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export function assertUserId(value) {
+  const userId = String(value || "").trim();
+  if (!USER_ID_PATTERN.test(userId)) {
+    throw new Error("Invalid user id.");
+  }
+  return userId;
+}
+
+/** Active Stripe subscription id to cancel before the auth user is deleted. */
+export function stripeSubscriptionToCancel(record) {
+  if (!record) return null;
+  if (String(record.provider || "stripe").toLowerCase() !== "stripe") return null;
+  const subscriptionId = String(record.stripe_subscription_id || "").trim();
+  if (!subscriptionId) return null;
+  const status = String(record.status || "").toLowerCase();
+  if (!STRIPE_CANCELABLE_STATUSES.has(status)) return null;
+  return subscriptionId;
+}
+
+export function nativeCorsHeaders(request) {
+  const origin = request?.headers?.get?.("origin") || "";
+  if (!NATIVE_APP_ORIGINS.has(origin)) return {};
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Checkout-Request-Id",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    Vary: "Origin",
   };
 }

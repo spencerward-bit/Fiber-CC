@@ -1,126 +1,134 @@
-# Android Release Prep
+# Android closed-testing checklist
 
-This checklist is for turning Color Optics into a release-ready Android app for the Google Play Store.
+Color Optics is ready to build for a Google Play closed test. The items below are the remaining manual steps. Do not commit the keystore, passwords, or service-role key.
 
-## Current Android Identity
+## Already in the project
 
 - App name: `Color Optics`
 - Package name: `co.coloroptics.app`
 - Version code: `1`
 - Version name: `1.0.0`
+- `minSdkVersion`: 24
+- `compileSdkVersion` / `targetSdkVersion`: 36
 
-## Before Building a Release
+Google Play requires new apps submitted after August 31, 2026 to target Android 16 (API 36). The extension window ended November 1, 2026. This project already targets API 36, so no SDK bump is required for the first upload. Re-check Play Console if Google raises the requirement again before you ship.
 
-- Confirm the app icon and splash screen are final.
-- Test the main pages on a real Android device:
-  - Home
-  - Fiber Color Code
-  - Twisted Pair
-  - Ethernet
-  - Coax
-- Test account flows:
-  - register
-  - sign in
-  - sign out
-  - reset password
-- Test premium flows:
-  - free account restrictions
-  - premium account unlock
-  - sign out and sign back in
-- Confirm Supabase live auth is working.
-- Confirm Stripe live checkout and webhook updates are working.
-- Review the legal pages before store submission:
-  - `privacy.html`
-  - `terms.html`
+The Android app does not sell a subscription. Stripe Checkout and the billing portal stay on the website. A person who already has Premium on the web can sign in inside the app and keep that access. Google Play Billing is not implemented yet. A later writer can store Play entitlements in `user_subscriptions` with `provider = 'google_play'`.
 
-## Files That Control Android Branding
+## 1. Supabase and Netlify before the first login test
 
-- App config:
-  - `C:\Users\ward4\Documents\Website-app\Fiber CC\capacitor.config.json`
-- Android app name:
-  - `C:\Users\ward4\Documents\Website-app\Fiber CC\android\app\src\main\res\values\strings.xml`
-- Android colors:
-  - `C:\Users\ward4\Documents\Website-app\Fiber CC\android\app\src\main\res\values\colors.xml`
-- Android launcher icons:
-  - `C:\Users\ward4\Documents\Website-app\Fiber CC\android\app\src\main\res\mipmap-*`
-- Splash styling:
-  - `C:\Users\ward4\Documents\Website-app\Fiber CC\android\app\src\main\res\values\styles.xml`
-  - `C:\Users\ward4\Documents\Website-app\Fiber CC\android\app\src\main\res\drawable\splash.png`
+Apply both migrations in order, if they are not already applied:
 
-## Recommended Signing Plan
+- `supabase/migrations/202607160001_production_subscriptions.sql`
+- `supabase/migrations/202611030001_play_entitlements_and_rls.sql`
 
-Create one long-term Android release keystore and keep it backed up safely.
+In Supabase Auth → URL configuration, keep the site URL on `https://www.coloroptics.co` and add this redirect URL:
 
-Suggested file name:
+`co.coloroptics.app://auth/callback`
 
-- `color-optics-release-key.jks`
+Also keep `https://www.coloroptics.co/` allowed. Password reset and signup confirmation from the app use the custom scheme. The same flows on the website still return to the website.
 
-Suggested alias:
+Netlify already needs the variables in `.env.example` / `SUBSCRIPTION_SETUP.md`. Account deletion uses the existing `SUPABASE_SERVICE_ROLE_KEY` and `STRIPE_SECRET_KEY`. No new secret was added. Deploy the site that contains `/api/delete-account` and the CORS headers on `/api/account-access` before testing Premium inside the app. The service-role key stays in Netlify only.
 
-- `coloroptics`
+Set the Play Console support email, then use that same address when someone who cannot sign in asks for deletion. The public deletion URL is:
 
-Do not lose:
+`https://www.coloroptics.co/delete-account.html`
 
-- keystore file
-- keystore password
-- key alias
-- key password
+## 2. Create and back up the upload key
 
-Without them, updating the Play Store app later becomes much harder.
+Create one long-term upload key and store it outside this repository:
 
-## Release Build Flow
+```bash
+keytool -genkeypair -v \
+  -keystore color-optics-release-key.jks \
+  -alias coloroptics \
+  -keyalg RSA -keysize 2048 -validity 10000
+```
 
-1. Open the Android project:
-   - `C:\Users\ward4\Documents\Website-app\Fiber CC\android`
-2. Bump the app version in:
-   - `C:\Users\ward4\Documents\Website-app\Fiber CC\android\app\build.gradle`
-3. Build a signed release:
-   - preferred format for Play Store: Android App Bundle (`.aab`)
-4. Test the signed build on a real Android phone.
-5. Upload it to Google Play Console.
+Back up all of these in a password manager or offline copy:
 
-## Versioning Suggestion
+- the `.jks` file
+- the keystore password
+- the alias `coloroptics`
+- the key password
 
-Use this pattern:
+Play App Signing can hold the app signing key. You still need this upload key for every future Android App Bundle. Losing it blocks updates.
 
-- `1.0.0` = first public release
-- `1.0.1` = small bug fix
-- `1.1.0` = feature update
-- `2.0.0` = major redesign or major platform change
+Enroll in Play App Signing when the first release is created. Prefer that over signing the store artifact with a key you also use as the only copy.
 
-For every Play Store update:
+## 3. Build a signed Android App Bundle
 
-- increase `versionCode`
-- update `versionName` when appropriate
+From the repo root, with Android Studio and a JDK installed:
 
-## Play Store Assets To Prepare
+```bash
+npm install
+npm test
+npm run cap:sync
+```
 
-- App title: `Color Optics`
-- Short description
-- Full description
-- App icon
-- Phone screenshots
-- Privacy Policy URL
-- Terms and Conditions URL
-- Public support email
-- Optional feature graphic
+`npm run cap:sync` refreshes `mobile-web/` and registers the Capacitor App plugin used for the back button and auth links. Then in Android Studio open the `android/` project and choose **Build → Generate Signed Bundle / APK → Android App Bundle**. Use the upload key from step 2. The file to upload is the `.aab`, not an APK.
 
-## Suggested First Release Positioning
+Bump `versionCode` in `android/app/build.gradle` for every upload after this first one. `versionName` can stay `1.0.0` for the closed test.
 
-Color Optics is a telecom field reference app for:
+On the first upload, check Play Console for a 16 KB page-size warning. This app does not ship its own native libraries beyond Capacitor. If Console flags one, update the Capacitor Android dependency and rebuild rather than ignoring the warning.
 
-- fiber color code lookups
-- twisted pair reference
-- Ethernet category reference
-- coax reference
-- account sync
-- premium access across supported devices
+There is no device test in this change. Before inviting testers, install the signed build on a phone and walk through sign-in, sign-up, password reset from the phone's email app, Premium on an account that already subscribed on the web, free-account limits, account deletion, and the system back button from a reference page and from the home page.
 
-## Recommended Next Steps
+## 4. Play Console listing
 
-1. Finalize the legal pages for live app distribution.
-2. Create the Android signing key.
-3. Build the first signed `.aab`.
-4. Prepare Play Store listing assets and text.
-5. Upload the app for internal testing first.
+Create the app with package name `co.coloroptics.app`. For the closed test, prepare:
 
+- App name: Color Optics
+- Short and full description of the fiber, twisted pair, Ethernet, and coax reference
+- App icon from `icon-512.png` (the same mark as the launcher)
+- Phone screenshots of Home, Fiber, Twisted Pair, Ethernet, and Coax
+- Feature graphic, if the closed-test form asks for one
+- Privacy policy URL: `https://www.coloroptics.co/privacy.html`
+- Account deletion URL: `https://www.coloroptics.co/delete-account.html`
+- Terms URL: `https://www.coloroptics.co/terms.html`
+- A public support email that matches the deletion page
+
+Category: Tools or Books & Reference. The app has no ads and no in-app purchases in this version. Declare that there are no in-app products. Do not add a Stripe purchase link to the store listing.
+
+Content rating: complete the questionnaire. The app is a technical reference and has no user-generated public content.
+
+## 5. Data safety answers
+
+Answer from what this Android build actually does. It does not use the Advertising ID, location, contacts, photos, microphone, camera, or an analytics SDK.
+
+| Data | Collected? | Why | Shared? |
+| --- | --- | --- | --- |
+| Email address | Yes, if the person creates or signs in to an account | Account management | Sent to Supabase Auth. Not sold and not used for ads. |
+| Password | Used to authenticate. Supabase stores the credential. The app does not keep a copy of the password. | Account management | Supabase Auth only. |
+| App interactions | Saved reference choices (page, cable size, tube size, and similar selections), on device and on the account when signed in | App functionality | Supabase `user_settings` when signed in. |
+| Purchase history | The app reads Premium status for the signed-in account (active or not, and the access period). It does not collect a card number. | App functionality | Color Optics `/api/account-access`. The Android app does not contact Stripe. |
+
+Also answer:
+
+- Data is encrypted in transit (HTTPS to Supabase and `https://www.coloroptics.co`).
+- Users can request deletion in the app and at `https://www.coloroptics.co/delete-account.html`.
+- Data is not sold.
+- Do not claim an independent security review unless one has been completed.
+- The website's Stripe Checkout is not part of the Android data-safety form. Card data is not collected by the app.
+
+## 6. Closed test: 12 testers for 14 days
+
+New personal Play Console accounts have to run a closed test with at least 12 testers who stay opted in for 14 consecutive days before Google will consider a production access request. Organization accounts can be exempt. Plan on the stricter rule:
+
+1. Create a closed testing release and upload the signed `.aab`.
+2. Add at least 12 tester Gmail addresses, or a Google Group that has at least 12 members.
+3. Send the opt-in link and confirm each tester installs from Play, not from a sideloaded APK.
+4. Leave the release running for 14 straight days with those testers still opted in.
+5. Apply for production only after Play Console says the closed-test requirement is met.
+
+Internal testing is useful first, but it does not replace the 12-tester closed test for a new personal account.
+
+## Branding files
+
+- `capacitor.config.json`
+- `android/app/src/main/res/values/strings.xml`
+- `android/app/src/main/res/values/colors.xml`
+- `android/app/src/main/res/mipmap-*`
+- `android/app/src/main/res/values/styles.xml`
+- `android/app/src/main/res/drawable/splash.png`
+- PWA icons: `icon-192.png`, `icon-512.png`, `icon-maskable-192.png`, `icon-maskable-512.png`

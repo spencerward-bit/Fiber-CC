@@ -1,6 +1,8 @@
 begin;
 
 alter table public.user_subscriptions
+  add column if not exists provider text,
+  add column if not exists status text,
   add column if not exists stripe_customer_id text,
   add column if not exists stripe_subscription_id text,
   add column if not exists stripe_price_id text,
@@ -99,6 +101,7 @@ revoke all on table public.stripe_webhook_events from anon, authenticated;
 -- Subscription entitlements are server-managed. Remove any legacy policies
 -- that allowed a browser client to insert or update its own Premium flag.
 alter table public.user_subscriptions enable row level security;
+alter table public.user_subscriptions force row level security;
 
 do $$
 declare
@@ -118,6 +121,9 @@ begin
 end
 $$;
 
-revoke all on table public.user_subscriptions from anon, authenticated;
+-- Authenticated and anonymous clients cannot insert, update, delete, or select
+-- entitlement rows. The service role (Stripe webhook, account deletion, and a
+-- future Play Billing writer) bypasses RLS. Do not add a write policy here.
+revoke all on table public.user_subscriptions from public, anon, authenticated;
 
 commit;

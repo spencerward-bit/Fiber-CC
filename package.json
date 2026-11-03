@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test --test-isolation=none",
+    "test": "node --experimental-test-isolation=none --test",
     "subscriptions:reconcile": "node scripts/reconcile-stripe-subscriber.mjs",
     "mobile:prepare": "node scripts/prepare-mobile.mjs",
     "cap:sync": "npm run mobile:prepare && npx cap sync",
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/cli": "^8.3.1",
     "@capacitor/core": "^8.3.1",
     "@capacitor/ios": "^8.3.1",

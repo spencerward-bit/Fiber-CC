@@ -127,6 +127,39 @@ body {
   font-weight: 700;
 }
 
+.auth-danger-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 140, 140, 0.45);
+  border-radius: 10px;
+  background: rgba(180, 40, 40, 0.2);
+  color: #ffb4b4;
+  font-weight: 700;
+}
+
+.account-delete-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.account-delete-panel p,
+.account-inline-link {
+  color: #8ea3b3;
+  line-height: 1.5;
+}
+
+.account-inline-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+html[data-native-app="true"] .web-billing-only {
+  display: none !important;
+}
+
 .auth-feedback {
   min-height: 20px;
   margin: 12px 0 0;
@@ -730,6 +763,10 @@ body {
   margin: 0;
   color: #d4dde3;
   line-height: 1.6;
+}
+
+.legal-card p + p {
+  margin-top: 12px;
 }
 
 .legal-effective {

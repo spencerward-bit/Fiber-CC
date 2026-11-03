@@ -1,4 +1,13 @@
-﻿const tubeSizeSelect = document.getElementById("tube-size");
+﻿import {
+  allowsWebBilling,
+  apiUrl,
+  authRedirectUrl,
+  isNativeCapacitor,
+  nativeAccountCopy,
+} from "./shared/billing-policy.mjs";
+import { parseAuthCallbackUrl } from "./shared/native-auth.mjs";
+
+const tubeSizeSelect = document.getElementById("tube-size");
 let fibersPerTube = parseInt(tubeSizeSelect.value);
 
 const tubeColors = [
@@ -105,6 +114,11 @@ const accountPlanTitle = document.getElementById("account-plan-title");
 const accountPlanCopy = document.getElementById("account-plan-copy");
 const accountSubscribeBtn = document.getElementById("account-subscribe-btn");
 const accountSubscribeNote = document.getElementById("account-subscribe-note");
+const accountDeleteBtn = document.getElementById("account-delete-btn");
+const accountDeletePanel = document.getElementById("account-delete-panel");
+const accountDeleteConfirmInput = document.getElementById("account-delete-confirm");
+const accountDeleteConfirmBtn = document.getElementById("account-delete-confirm-btn");
+const accountDeleteCancelBtn = document.getElementById("account-delete-cancel-btn");
 const fiberAccessNote = document.getElementById("fiber-access-note");
 const fiberAccessCopy = document.getElementById("fiber-access-copy");
 const pairAccessNote = document.getElementById("pair-access-note");
@@ -148,11 +162,27 @@ const pageIdToSlug = {
 };
 const SUPABASE_URL = "https://xekhxxodxprripdahwdr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhla2h4eG9keHBycmlwZGFod2RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MjMzOTgsImV4cCI6MjA5MTQ5OTM5OH0.buCrTi2vnG9JQYIwdtCA1jzs0wdocdT_ul4qLoPEoPQ";
-const PRODUCTION_APP_URL = "https://www.coloroptics.co/";
-const AUTH_REDIRECT_URL = window.location.hostname === "localhost"
-  ? `${window.location.origin}/`
-  : PRODUCTION_APP_URL;
 const SUPABASE_PROJECT_REF = new URL(SUPABASE_URL).hostname.split(".")[0];
+
+function isNativeApp() {
+  return isNativeCapacitor(window.Capacitor);
+}
+
+function getAuthRedirectUrl() {
+  return authRedirectUrl({
+    isNative: isNativeApp(),
+    hostname: window.location.hostname,
+    origin: window.location.origin,
+  });
+}
+
+function appApiUrl(path) {
+  return apiUrl(path, { isNative: isNativeApp() });
+}
+
+if (isNativeApp()) {
+  document.documentElement.dataset.nativeApp = "true";
+}
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const fiberTubeCatalog = {
   "12": [
@@ -192,6 +222,10 @@ let currentAccess = {
   source: "none"
 };
 let pendingCheckoutAccessRefresh = false;
+let pendingAuthCallbackType = "";
+let accountDeletionInProgress = false;
+const pageHistory = [];
+const handledAuthUrls = new Set();
 
 const pairMajorColors = ["White", "Red", "Black", "Yellow", "Violet"];
 const pairMinorColors = ["Blue", "Orange", "Green", "Brown", "Slate"];
@@ -782,27 +816,6 @@ function isPremiumAccess(access = currentAccess) {
   return access.tier === "premium";
 }
 
-function getValueFromRecord(record, keys) {
-  for (const key of keys) {
-    if (record && record[key] !== undefined && record[key] !== null) {
-      return record[key];
-    }
-  }
-
-  return null;
-}
-
-function getAccessTimestamp(record, keys) {
-  const value = getValueFromRecord(record, keys);
-
-  if (!value) {
-    return null;
-  }
-
-  const parsed = Date.parse(value);
-  return Number.isNaN(parsed) ? null : parsed;
-}
-
 function formatAccessDate(value) {
   if (!value) {
     return "";
@@ -821,173 +834,50 @@ function formatAccessDate(value) {
   });
 }
 
-function parseAccessRecord(record, fallbackSource = "supabase") {
-  if (!record) {
-    return null;
-  }
-
-  const booleanPremium = getValueFromRecord(record, ["is_premium", "premium", "paid", "subscriber"]);
-  const tierValue = getValueFromRecord(record, ["tier", "plan", "access_tier", "membership", "role"]);
-  const statusValue = getValueFromRecord(record, ["status", "subscription_status", "state"]);
-  const sourceValue = getValueFromRecord(record, ["source", "provider", "subscription_source"]);
-  const currentPeriodEnd = getValueFromRecord(record, ["current_period_end", "period_end", "renews_at", "expires_at"]);
-
-  const normalizedTier = typeof tierValue === "string" ? tierValue.trim().toLowerCase() : "";
-  const normalizedStatus = typeof statusValue === "string" ? statusValue.trim().toLowerCase() : "";
-  const normalizedSource = typeof sourceValue === "string" ? sourceValue.trim() : "";
-  const currentPeriodEndTimestamp = getAccessTimestamp(record, ["current_period_end", "period_end", "renews_at", "expires_at"]);
-
-  const activeStatuses = new Set(["active", "premium", "paid", "trialing", "trial", "subscriber"]);
-  const inactiveStatuses = new Set(["inactive", "canceled", "cancelled", "expired", "unpaid", "past_due", "incomplete", "incomplete_expired"]);
-  const premiumTiers = new Set(["premium", "pro", "paid", "subscriber", "active"]);
-  const isActiveBoolean = booleanPremium === true || booleanPremium === "true";
-  const isInactiveBoolean = booleanPremium === false || booleanPremium === "false";
-  const isPremiumTier = premiumTiers.has(normalizedTier);
-  const isPremiumStatus = activeStatuses.has(normalizedStatus);
-
-  if (isInactiveBoolean && !isPremiumTier && !isPremiumStatus) {
-    return null;
-  }
-
-  if (!isActiveBoolean && inactiveStatuses.has(normalizedStatus)) {
-    return null;
-  }
-
-  if (!isActiveBoolean && currentPeriodEndTimestamp && currentPeriodEndTimestamp < Date.now()) {
-    return null;
-  }
-
-  if (!isActiveBoolean && !isPremiumTier && !isPremiumStatus) {
-    return null;
-  }
+function parseAccessRecord(record) {
+  const status = String(record?.status || "inactive").trim().toLowerCase();
+  const currentPeriodEnd = record?.current_period_end || null;
+  const currentPeriodEndTimestamp = currentPeriodEnd ? Date.parse(currentPeriodEnd) : null;
+  const periodIsCurrent = !currentPeriodEnd
+    || (!Number.isNaN(currentPeriodEndTimestamp) && currentPeriodEndTimestamp > Date.now());
+  const premium = record?.tier === "premium"
+    && ["active", "trialing"].includes(status)
+    && periodIsCurrent;
 
   return {
-    tier: "premium",
-    status: normalizedStatus || "active",
-    source: normalizedSource || fallbackSource,
+    tier: premium ? "premium" : "free",
+    status,
+    source: String(record?.source || "account access"),
     currentPeriodEnd
   };
 }
 
-function sortAccessRecords(records = []) {
-  const premiumRank = record => {
-    const parsed = parseAccessRecord(record);
-    return parsed ? 1 : 0;
-  };
-
-  const timestampValue = value => {
-    if (!value) {
-      return 0;
-    }
-
-    const parsed = new Date(value).getTime();
-    return Number.isNaN(parsed) ? 0 : parsed;
-  };
-
-  return [...records].sort((left, right) => {
-    const premiumDifference = premiumRank(right) - premiumRank(left);
-
-    if (premiumDifference !== 0) {
-      return premiumDifference;
-    }
-
-    const periodDifference = timestampValue(getValueFromRecord(right, ["current_period_end", "period_end", "renews_at", "expires_at"]))
-      - timestampValue(getValueFromRecord(left, ["current_period_end", "period_end", "renews_at", "expires_at"]));
-
-    if (periodDifference !== 0) {
-      return periodDifference;
-    }
-
-    return timestampValue(getValueFromRecord(right, ["created_at", "started_at"]))
-      - timestampValue(getValueFromRecord(left, ["created_at", "started_at"]));
-  });
-}
-
-async function loadAccessFromCandidateTable(candidate, userId) {
-  const { data, error } = await supabaseClient
-    .from(candidate.table)
-    .select("*")
-    .eq(candidate.column, userId)
-    .limit(25);
-
-  if (error) {
-    throw error;
-  }
-
-  const records = Array.isArray(data) ? data : data ? [data] : [];
-
-  for (const record of sortAccessRecords(records)) {
-    const parsed = parseAccessRecord(record, candidate.source);
-
-    if (parsed) {
-      return parsed;
-    }
-  }
-
-  return null;
-}
-
 async function loadAccessForUser(user) {
+  if (!user) {
+    return { tier: "free", status: "inactive", source: "default", currentPeriodEnd: null };
+  }
+
   try {
-    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
     const accessToken = sessionData.session?.access_token;
-
-    if (accessToken) {
-      const response = await fetch("/api/account-access", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      });
-
-      if (response.ok) {
-        const payload = await response.json();
-        const parsed = parseAccessRecord(payload.access, "account access");
-
-        if (parsed) {
-          return parsed;
-        }
-      }
+    if (sessionError || !accessToken) {
+      throw new Error("The signed-in session is unavailable.");
     }
+
+    const response = await fetch(appApiUrl("/api/account-access"), {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store"
+    });
+    if (!response.ok) {
+      throw new Error(`The account access service returned ${response.status}.`);
+    }
+
+    const payload = await response.json();
+    return parseAccessRecord(payload.access);
   } catch (error) {
     console.error("Unable to check server account access:", error.message);
+    return { tier: "free", status: "unavailable", source: "account access", currentPeriodEnd: null };
   }
-
-  const metadataSources = [
-    { label: "app metadata", value: parseAccessRecord(user?.app_metadata, "app metadata") },
-    { label: "user metadata", value: parseAccessRecord(user?.user_metadata, "user metadata") }
-  ];
-
-  for (const source of metadataSources) {
-    if (source.value) {
-      return source.value;
-    }
-  }
-
-  const tableCandidates = [
-    { table: "user_access", column: "user_id", source: "user_access" },
-    { table: "subscriptions", column: "user_id", source: "subscriptions" },
-    { table: "user_subscriptions", column: "user_id", source: "user_subscriptions" },
-    { table: "entitlements", column: "user_id", source: "entitlements" },
-    { table: "profiles", column: "id", source: "profiles" }
-  ];
-
-  for (const candidate of tableCandidates) {
-    try {
-      const parsed = await loadAccessFromCandidateTable(candidate, user.id);
-
-      if (parsed) {
-        return parsed;
-      }
-    } catch (error) {
-      console.error(`Unable to read ${candidate.table}:`, error.message);
-    }
-  }
-
-  return {
-    tier: "free",
-    status: user ? "signed_in" : "inactive",
-    source: "default"
-  };
 }
 
 function wait(ms) {
@@ -1072,6 +962,25 @@ function getTubeSizeRestrictionLabel(tubeSize, totalFibers) {
 
 function refreshAccountAccessUI() {
   const premium = isPremiumAccess();
+
+  if (!allowsWebBilling(isNativeApp())) {
+    const copy = nativeAccountCopy({
+      isPremium: premium,
+      status: currentAccess.status,
+      periodLabel: formatAccessDate(currentAccess.currentPeriodEnd),
+    });
+    accountAccessBadge.textContent = copy.badge;
+    accountAccessBadge.classList.toggle("premium", premium);
+    accountAccessCopy.textContent = copy.accessCopy;
+    accountAccessDetails.textContent = copy.details;
+    accountPlanTitle.textContent = copy.planTitle;
+    accountPlanCopy.textContent = copy.planCopy;
+    accountSubscribeBtn.disabled = true;
+    accountSubscribeBtn.textContent = "";
+    accountSubscribeNote.textContent = "";
+    return;
+  }
+
   const premiumSource = currentAccess.source === "stripe" ? "Managed through Stripe." : "Premium access is active on this account.";
   const trialEndsOn = formatAccessDate(currentAccess.currentPeriodEnd);
   const premiumDetails = currentAccess.status === "trialing" && trialEndsOn
@@ -1090,10 +999,10 @@ function refreshAccountAccessUI() {
   accountPlanCopy.textContent = premium
     ? "This account is already unlocked for the full reference library across supported devices when signed in."
     : "Unlock the full Fiber, Twisted Pair, Ethernet, and Coax reference library across the web app and future mobile apps when signed in.";
-  accountSubscribeBtn.textContent = premium ? "Premium Enabled" : "Subscribe with Stripe";
-  accountSubscribeBtn.disabled = premium;
+  accountSubscribeBtn.textContent = premium ? "Manage Subscription" : "Subscribe with Stripe";
+  accountSubscribeBtn.disabled = false;
   accountSubscribeNote.textContent = premium
-    ? "This account already has premium access."
+    ? "Open Stripe's secure billing portal to view invoices, update payment details, or manage renewal."
     : "Secure Stripe checkout will open here for web subscriptions.";
 }
 
@@ -1223,12 +1132,13 @@ function clearSupabaseSessionStorage() {
   });
 }
 
-function finalizeSignOutUI(message = "Signed out successfully.") {
+function finalizeSignOutUI(message = "Signed out successfully.", nextMode = "register") {
   isSigningOut = false;
   currentAccess = { tier: "free", status: "inactive", source: "default" };
   clearSupabaseSessionStorage();
   authForm.reset();
-  setAuthMode("register");
+  closeAccountDeletionPrompt();
+  setAuthMode(nextMode);
   updateAuthUI(null);
   applyAccessRules();
   setCurrentPage("page-6", false);
@@ -1240,14 +1150,28 @@ function finalizeSignOutUI(message = "Signed out successfully.") {
 function handleCheckoutReturn() {
   const currentUrl = new URL(window.location.href);
   const checkoutStatus = currentUrl.searchParams.get("checkout");
+  const billingStatus = currentUrl.searchParams.get("billing");
 
-  if (!checkoutStatus) {
+  if (!checkoutStatus && !billingStatus) {
+    return;
+  }
+
+  if (!allowsWebBilling(isNativeApp())) {
+    currentUrl.searchParams.delete("checkout");
+    currentUrl.searchParams.delete("billing");
+    window.history.replaceState({}, "", currentUrl.toString());
     return;
   }
 
   currentUrl.searchParams.delete("checkout");
+  currentUrl.searchParams.delete("billing");
   window.history.replaceState({}, "", currentUrl.toString());
   setCurrentPage("page-6", false);
+
+  if (billingStatus === "return") {
+    setAuthFeedback("Your Stripe billing portal session is complete. Account access is refreshing.", "success");
+    return;
+  }
 
   if (checkoutStatus === "success") {
     pendingCheckoutAccessRefresh = true;
@@ -1317,14 +1241,23 @@ function updateAuthUI(user) {
   if (isSignedIn && !isRecovery) {
     authUserEmail.textContent = user.email ?? "Signed-in user";
     authSessionCopy.textContent = "Your account is connected. Your settings can now sync with Supabase.";
-  } else {
+  } else if (!isRecovery) {
     authUserEmail.textContent = "";
     setAuthMode(currentAuthMode);
   }
 }
 
-function setCurrentPage(pageId, shouldSave = true) {
+function setCurrentPage(pageId, shouldSave = true, options = {}) {
+  const recordHistory = options.recordHistory !== false;
   const activePage = pageOrder.find(page => page.id === pageId) ?? pageOrder[0];
+
+  if (recordHistory && currentPageId && currentPageId !== activePage.id) {
+    pageHistory.push(currentPageId);
+    if (pageHistory.length > 30) {
+      pageHistory.shift();
+    }
+  }
+
   currentPageId = activePage.id;
 
   pages.forEach(page => {
@@ -1812,7 +1745,7 @@ function applyState(state) {
     : allowedEthernetCategories[0];
   const nextCoaxType = coaxCatalog[state.coaxType] ? state.coaxType : defaultState.coaxType;
 
-  setCurrentPage(state.currentPage, false);
+  setCurrentPage(state.currentPage, false, { recordHistory: false });
   activeFiberSequence = nextFiberSequence;
   rebuildTubeSizeOptions(nextFiberSequence);
   updateFiberSequenceButtons();
@@ -1932,7 +1865,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
     : { tier: "free", status: "inactive", source: "default" };
   applyAccessRules();
 
-  if (event === "SIGNED_IN" && user) {
+  if (event === "SIGNED_IN" && user && pendingAuthCallbackType !== "recovery") {
     const cloudState = await loadCloudStateForUser(user);
 
     if (cloudState) {
@@ -1947,7 +1880,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
     }
   }
 
-  if (event === "SIGNED_OUT") {
+  if (event === "SIGNED_OUT" && !accountDeletionInProgress) {
     finalizeSignOutUI("Signed out successfully.");
   }
 });
@@ -1969,62 +1902,74 @@ authEntryBtn.addEventListener("click", () => {
 });
 
 accountSubscribeBtn.addEventListener("click", async () => {
-  if (isPremiumAccess()) {
-    setAuthFeedback("This account already has premium access.", "success");
+  if (!allowsWebBilling(isNativeApp())) {
     return;
   }
 
   if (!currentUser) {
-    setAuthFeedback("Sign in before starting a subscription.", "error");
+    setAuthFeedback("Sign in before managing a subscription.", "error");
     return;
   }
 
+  const openingPortal = isPremiumAccess();
+  const endpoint = openingPortal ? "/api/create-billing-portal" : "/api/create-checkout-session";
+  const destinationName = openingPortal ? "Stripe Billing Portal" : "Stripe Checkout";
   accountSubscribeBtn.disabled = true;
-  accountSubscribeBtn.textContent = "Opening Stripe Checkout...";
-  setAuthFeedback("Preparing secure Stripe checkout...");
+  accountSubscribeBtn.textContent = `Opening ${destinationName}...`;
+  setAuthFeedback(`Preparing secure ${destinationName}...`);
 
+  let timeoutId;
   try {
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 12000);
+    timeoutId = window.setTimeout(() => controller.abort(), 12000);
     const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
 
     if (sessionError || !sessionData.session?.access_token) {
-      window.clearTimeout(timeoutId);
       throw new Error("Your session could not be verified. Please sign in again.");
     }
 
-    const response = await fetch("/api/create-checkout-session", {
+    const checkoutRequestId = typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${sessionData.session.access_token}`
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+        "X-Checkout-Request-Id": checkoutRequestId
       },
       signal: controller.signal
     });
-    window.clearTimeout(timeoutId);
 
     let payload;
 
     try {
       payload = await response.json();
     } catch (error) {
-      throw new Error("The checkout service returned an unexpected response.");
+      throw new Error(`The ${destinationName} service returned an unexpected response.`);
     }
 
     if (!response.ok) {
-      throw new Error(payload.error || "Unable to start Stripe checkout.");
+      if (response.status === 409 && payload.code === "already_subscribed") {
+        await refreshAccessForUser(currentUser);
+        setAuthFeedback(payload.error, "success");
+        return;
+      }
+      throw new Error(payload.error || `Unable to open ${destinationName}.`);
     }
 
     if (!payload.url) {
-      throw new Error("Stripe checkout did not return a redirect URL.");
+      throw new Error(`${destinationName} did not return a redirect URL.`);
     }
 
     window.location.assign(payload.url);
   } catch (error) {
     const message = error.name === "AbortError"
-      ? "Stripe checkout timed out. The Netlify function may not be deployed yet, or the server is still starting."
-      : error.message || "Unable to start Stripe checkout.";
+      ? `${destinationName} timed out. Please try again.`
+      : error.message || `Unable to open ${destinationName}.`;
     setAuthFeedback(message, "error");
+  } finally {
+    window.clearTimeout(timeoutId);
     accountSubscribeBtn.disabled = false;
     refreshAccountAccessUI();
   }
@@ -2061,7 +2006,13 @@ authForm.addEventListener("submit", async event => {
   let result;
 
   if (currentAuthMode === "register") {
-    result = await supabaseClient.auth.signUp({ email, password });
+    result = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: getAuthRedirectUrl()
+      }
+    });
   } else if (currentAuthMode === "recovery") {
     result = await supabaseClient.auth.updateUser({ password });
   } else {
@@ -2126,7 +2077,7 @@ authResetPasswordBtn.addEventListener("click", async () => {
   setAuthFeedback("Sending reset email...");
 
   const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-    redirectTo: AUTH_REDIRECT_URL
+    redirectTo: getAuthRedirectUrl()
   });
 
   authResetPasswordBtn.disabled = false;
@@ -2136,7 +2087,12 @@ authResetPasswordBtn.addEventListener("click", async () => {
     return;
   }
 
-  setAuthFeedback("Password reset email sent. Open the link in your email to choose a new password.", "success");
+  setAuthFeedback(
+    isNativeApp()
+      ? "Password reset email sent. Open the link on this device to choose a new password."
+      : "Password reset email sent. Open the link in your email to choose a new password.",
+    "success"
+  );
 });
 
 authSignoutBtn.addEventListener("click", async event => {
@@ -2419,4 +2375,188 @@ coaxTypeSelect.addEventListener("change", () => {
   renderCoaxDiagram(coaxCatalog[coaxTypeSelect.value]);
   saveState();
 });
+
+function closeAccountDeletionPrompt() {
+  if (!accountDeletePanel || accountDeletePanel.classList.contains("hidden")) {
+    return false;
+  }
+
+  accountDeletePanel.classList.add("hidden");
+  accountDeleteBtn?.classList.remove("hidden");
+  if (accountDeleteConfirmInput) {
+    accountDeleteConfirmInput.value = "";
+  }
+  return true;
+}
+
+function handleNativeBack(appPlugin) {
+  if (closeAccountDeletionPrompt()) {
+    return;
+  }
+
+  if (pageHistory.length) {
+    const previousPageId = pageHistory.pop();
+    setCurrentPage(previousPageId, true, { recordHistory: false });
+    return;
+  }
+
+  if (currentPageId !== "page-1") {
+    setCurrentPage("page-1", true, { recordHistory: false });
+    return;
+  }
+
+  void appPlugin.exitApp();
+}
+
+async function completeNativeAuthCallback(url) {
+  if (!url || handledAuthUrls.has(url)) {
+    return;
+  }
+
+  const parsed = parseAuthCallbackUrl(url);
+  if (!parsed) {
+    return;
+  }
+
+  handledAuthUrls.add(url);
+  pendingAuthCallbackType = parsed.type || "";
+  setCurrentPage("page-6", false);
+
+  if (parsed.error) {
+    pendingAuthCallbackType = "";
+    setAuthFeedback(parsed.error, "error");
+    return;
+  }
+
+  if (pendingAuthCallbackType === "recovery") {
+    setAuthMode("recovery");
+  }
+
+  const result = parsed.code
+    ? await supabaseClient.auth.exchangeCodeForSession(parsed.code)
+    : await supabaseClient.auth.setSession({
+      access_token: parsed.accessToken,
+      refresh_token: parsed.refreshToken
+    });
+
+  if (result.error) {
+    pendingAuthCallbackType = "";
+    setAuthFeedback(result.error.message || "The email link could not be opened in the app.", "error");
+    return;
+  }
+
+  const user = result.data?.user ?? result.data?.session?.user ?? null;
+
+  if (pendingAuthCallbackType === "recovery") {
+    setAuthMode("recovery");
+    updateAuthUI(user);
+    authPasswordInput.value = "";
+    setAuthFeedback("Enter a new password, then select Update Password.", "success");
+    return;
+  }
+
+  pendingAuthCallbackType = "";
+  updateAuthUI(user);
+  setAuthFeedback("Email link confirmed. You are signed in.", "success");
+}
+
+function initNativeShell() {
+  if (!isNativeApp() || typeof window.Capacitor?.registerPlugin !== "function") {
+    return;
+  }
+
+  try {
+    const appPlugin = window.Capacitor.registerPlugin("App");
+    void appPlugin.addListener("backButton", () => {
+      handleNativeBack(appPlugin);
+    });
+    void appPlugin.addListener("appUrlOpen", event => {
+      void completeNativeAuthCallback(event?.url);
+    });
+
+    void appPlugin.getLaunchUrl()
+      .then(result => {
+        if (result?.url) {
+          return completeNativeAuthCallback(result.url);
+        }
+        return null;
+      })
+      .catch(error => {
+        console.error("Unable to read the launch URL:", error?.message || error);
+      });
+  } catch (error) {
+    console.error("Native shell controls are unavailable:", error?.message || error);
+  }
+}
+
+accountDeleteBtn?.addEventListener("click", () => {
+  accountDeletePanel.classList.remove("hidden");
+  accountDeleteBtn.classList.add("hidden");
+  accountDeleteConfirmInput.value = "";
+  accountDeleteConfirmInput.focus();
+  setAuthFeedback();
+});
+
+accountDeleteCancelBtn?.addEventListener("click", () => {
+  closeAccountDeletionPrompt();
+  setAuthFeedback();
+});
+
+accountDeleteConfirmBtn?.addEventListener("click", async () => {
+  if (!currentUser) {
+    setAuthFeedback("Sign in before deleting your account.", "error");
+    return;
+  }
+
+  if (accountDeleteConfirmInput.value.trim() !== "DELETE") {
+    setAuthFeedback("Type DELETE to confirm account deletion.", "error");
+    return;
+  }
+
+  accountDeleteConfirmBtn.disabled = true;
+  setAuthFeedback("Deleting account...");
+
+  try {
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (sessionError || !accessToken) {
+      throw new Error("Your session could not be verified. Please sign in again.");
+    }
+
+    const response = await fetch(appApiUrl("/api/delete-account"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({ confirm: "DELETE" })
+    });
+
+    let payload = {};
+    try {
+      payload = await response.json();
+    } catch (error) {
+      payload = {};
+    }
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Account deletion could not be finished.");
+    }
+
+    localStorage.removeItem(STORAGE_KEY);
+    accountDeletionInProgress = true;
+    try {
+      await supabaseClient.auth.signOut({ scope: "local" });
+    } catch (error) {
+      clearSupabaseSessionStorage();
+    }
+    finalizeSignOutUI("Your account and its saved data were deleted.", "signin");
+    accountDeletionInProgress = false;
+  } catch (error) {
+    setAuthFeedback(error.message || "Account deletion could not be finished.", "error");
+    accountDeleteConfirmBtn.disabled = false;
+  }
+});
+
+initNativeShell();
 

@@ -12,10 +12,12 @@ const rootEntriesToCopy = [
   "coax-reference.html",
   "privacy.html",
   "terms.html",
+  "delete-account.html",
   "style.css",
   "script.js",
   "service-worker.js",
   "manifest.json",
+  "shared",
   "robots.txt",
   "sitemap.xml"
 ];

@@ -41,8 +41,10 @@ npm run cap:sync
 3. When a batch of changes is ready for mobile, run `npm run cap:sync`.
 4. Open Android Studio or Xcode and build a new store version.
 
-## Next cleanup items
+## Android shell
 
-- Add real app icons and splash assets.
-- Update `manifest.json` branding to match Color Optics instead of the older FiberMap label.
-- Add native app settings like icons, permissions, and splash screen behavior.
+`npm run cap:sync` also registers `@capacitor/app`. The app uses it for the Android back button and for `co.coloroptics.app://auth/callback` after a password-reset or confirmation email.
+
+PWA icons and the Color Optics manifest name are generated from `scripts/android-icon-source.png`. Launcher and splash assets remain under `android/app/src/main/res/`.
+
+The release checklist is `android-release-prep.md`.

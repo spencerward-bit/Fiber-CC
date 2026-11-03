@@ -17,6 +17,16 @@
   <meta name="twitter:description" content="Field-ready telecom reference for fiber color code, twisted pair, Ethernet capability, and coax." />
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#081116" />
+  <link rel="icon" href="icon-192.png" type="image/png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <script>
+    (function () {
+      var capacitor = window.Capacitor;
+      var native = capacitor && typeof capacitor.isNativePlatform === "function" && capacitor.isNativePlatform();
+      if (native) document.documentElement.setAttribute("data-native-app", "true");
+    })();
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script type="application/ld+json">
     {
@@ -100,6 +110,18 @@
         <button id="account-signout-btn" class="home-link-btn home-link-btn-secondary auth-signout-btn" type="button">
           Sign Out
         </button>
+        <button id="account-delete-btn" class="auth-danger-btn" type="button">Delete account</button>
+        <div id="account-delete-panel" class="account-delete-panel hidden">
+          <p id="account-delete-copy">
+            This permanently deletes the Color Optics account, saved settings, and access record.
+            Any active subscription is canceled first and will not renew. This cannot be undone.
+          </p>
+          <label for="account-delete-confirm">Type DELETE to confirm</label>
+          <input id="account-delete-confirm" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+          <button id="account-delete-confirm-btn" class="auth-danger-btn" type="button">Delete my account</button>
+          <button id="account-delete-cancel-btn" class="auth-secondary-btn" type="button">Cancel</button>
+        </div>
+        <a class="account-inline-link" href="delete-account.html">How account deletion works</a>
       </div>
 
       <div id="account-toggle-row" class="auth-toggle-row">
@@ -138,7 +160,7 @@
           <li>Full Ethernet category library</li>
           <li>Full Coax reference access</li>
         </ul>
-        <div class="account-subscription-actions">
+        <div class="account-subscription-actions web-billing-only">
           <button id="account-subscribe-btn" class="home-link-btn" type="button">Subscribe with Stripe</button>
           <p id="account-subscribe-note" class="account-access-details">
             Secure Stripe checkout will open here for web subscriptions.
@@ -247,6 +269,9 @@
     </a>
     <a class="home-link-btn home-link-btn-secondary" href="privacy.html">
       Privacy Policy
+    </a>
+    <a class="home-link-btn home-link-btn-secondary" href="delete-account.html">
+      Delete Account
     </a>
   </div>
 </section>
@@ -513,7 +538,7 @@
   <button class="tab-btn" type="button" data-page-target="page-5">Coax</button>
 </nav>
 
-<script src="script.js"></script>
+<script type="module" src="script.js"></script>
 
 <script>
   if ("serviceWorker" in navigator) {

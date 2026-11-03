@@ -85,3 +85,22 @@ test("subscription RLS grants no client write policy", () => {
   assert.match(read("netlify/functions/delete-account.mjs"), /requireEnv\("SUPABASE_SERVICE_ROLE_KEY"\)|supabaseAdminRequest/);
   assert.doesNotMatch(read("netlify/functions/delete-account.mjs"), /service_role/i);
 });
+
+test("user_settings grants block truncate and keep signed-in saves", () => {
+  const grants = [
+    "revoke all on table public.user_settings from anon;",
+    "revoke truncate, delete, references, trigger on table public.user_settings from authenticated;",
+    "grant select, insert, update on table public.user_settings to authenticated;",
+  ];
+  const schema = read("supabase-schema.sql");
+  const migration = read("supabase/migrations/202611030002_tighten_user_settings_grants.sql");
+  for (const statement of grants) {
+    assert.equal(schema.includes(statement), true);
+    assert.equal(migration.includes(statement), true);
+  }
+
+  const client = read("script.js");
+  assert.match(client, /\.from\("user_settings"\)\s*\.upsert/);
+  assert.match(client, /\.from\("user_settings"\)\s*\.select/);
+  assert.doesNotMatch(client, /\.from\("user_settings"\)[\s\S]{0,240}\.delete\(/);
+});

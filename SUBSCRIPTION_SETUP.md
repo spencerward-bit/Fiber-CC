@@ -32,6 +32,7 @@ Review and apply, in order:
 
 1. `supabase/migrations/202607160001_production_subscriptions.sql`
 2. `supabase/migrations/202611030001_play_entitlements_and_rls.sql`
+3. `supabase/migrations/202611030002_tighten_user_settings_grants.sql`
 
 The first migration:
 
@@ -42,6 +43,8 @@ The first migration:
 - keeps all subscription writes restricted to trusted server code.
 
 The second migration adds `store_product_id` and `store_transaction_id` for a future Play Billing writer and repeats the entitlement lockdown: no insert, update, or delete policy, and table privileges revoked from `public`, `anon`, and `authenticated`.
+
+The third migration removes `TRUNCATE` (and other non-RLS privileges) from `user_settings`. It was applied on the live project as `tighten_user_settings_grants`. Signed-in users keep `select`, `insert`, and `update` for their own row. Account deletion still removes that row through the service-role function, not from the browser.
 
 Applying the migrations is a separate production action and requires explicit approval.
 

@@ -25,6 +25,12 @@ to authenticated
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
+-- TRUNCATE is not covered by RLS. Match production migration
+-- 202611030002_tighten_user_settings_grants.
+revoke all on table public.user_settings from anon;
+revoke truncate, delete, references, trigger on table public.user_settings from authenticated;
+grant select, insert, update on table public.user_settings to authenticated;
+
 -- Entitlement rows are server-managed. A fresh database should also run
 -- supabase/migrations so indexes, the webhook ledger, and triggers exist.
 -- Authenticated users cannot insert, update, or delete these rows. Direct

@@ -1,12 +1,23 @@
-const CACHE_NAME = "fiber-map-v4";
+const CACHE_NAME = "color-optics-v5";
 const STATIC_FILES = [
   "./",
   "./index.html",
+  "./fiber-color-code.html",
+  "./twisted-pair-color-code.html",
+  "./ethernet-reference.html",
+  "./coax-reference.html",
   "./terms.html",
   "./privacy.html",
+  "./delete-account.html",
   "./style.css",
   "./script.js",
-  "./manifest.json"
+  "./shared/billing-policy.mjs",
+  "./shared/native-auth.mjs",
+  "./manifest.json",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./icon-maskable-192.png",
+  "./icon-maskable-512.png"
 ];
 
 self.addEventListener("install", event => {
@@ -45,6 +56,7 @@ self.addEventListener("fetch", event => {
     event.request.destination === "script" ||
     event.request.destination === "style" ||
     url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".mjs") ||
     url.pathname.endsWith(".css")
   );
 

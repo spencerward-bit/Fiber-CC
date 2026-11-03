@@ -28,7 +28,12 @@ After changing Netlify environment variables, a new production deploy is require
 
 ## Supabase migration
 
-Review `supabase/migrations/202607160001_production_subscriptions.sql` before applying it. It:
+Review and apply, in order:
+
+1. `supabase/migrations/202607160001_production_subscriptions.sql`
+2. `supabase/migrations/202611030001_play_entitlements_and_rls.sql`
+
+The first migration:
 
 - creates one canonical subscription row per user;
 - stores Stripe customer, subscription, price, period, and event identifiers;
@@ -36,7 +41,9 @@ Review `supabase/migrations/202607160001_production_subscriptions.sql` before ap
 - removes browser write access to subscription entitlements;
 - keeps all subscription writes restricted to trusted server code.
 
-Applying the migration is a separate production action and requires explicit approval.
+The second migration adds `store_product_id` and `store_transaction_id` for a future Play Billing writer and repeats the entitlement lockdown: no insert, update, or delete policy, and table privileges revoked from `public`, `anon`, and `authenticated`.
+
+Applying the migrations is a separate production action and requires explicit approval.
 
 ## Stripe webhook
 
@@ -92,6 +99,22 @@ Do not run the write form until the migration has been applied and the proposed 
 7. Verify active and trialing accounts receive Premium, while canceled, unpaid, expired, and malformed records fail closed.
 8. Reconcile the existing live subscriber only after the dry-run identity, price, status, and billing period are confirmed.
 
+## Account deletion
+
+`/api/delete-account` accepts a signed-in user's access token and `{ "confirm": "DELETE" }`. It uses the service-role key already configured for Functions. It cancels a cancelable Stripe subscription first, then deletes `user_settings`, `user_subscriptions`, linked `stripe_webhook_events`, and the Supabase auth user. The service-role key is not shipped in the app.
+
+The public explanation page is `https://www.coloroptics.co/delete-account.html`.
+
+## Android app and a future Play Billing writer
+
+The Capacitor app calls `https://www.coloroptics.co/api/account-access` and `/api/delete-account`. Those two functions allow the native origins `https://localhost` and `capacitor://localhost`. Stripe Checkout and the billing portal are not offered inside the app and do not send that CORS header.
+
+Add this Supabase Auth redirect URL before testing password reset or email confirmation inside the app:
+
+`co.coloroptics.app://auth/callback`
+
+A later Google Play Billing integration, including one fronted by RevenueCat, should write the same `user_subscriptions` row through the service role. Use `subscriptionRecordFromGooglePlay` in `netlify/functions/_shared/subscriptions.mjs` (`provider` `google_play`, plus `store_product_id`, `store_transaction_id`, `status`, and `current_period_end`). Do not let the client insert that row. `entitlementWriteShouldReplace` refuses to overwrite a Stripe subscription that is still Premium. Play Billing itself is not implemented.
+
 ## Mobile billing note
 
-This Stripe flow is for the web app. Before publishing native Android or iOS builds, implement the respective app-store billing systems and map those entitlements into the same server-controlled Supabase subscription model.
+Stripe Checkout remains the web subscription path. The Android app hides that purchase UI. Play Billing can be added later against the same subscription table.
